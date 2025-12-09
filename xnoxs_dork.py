@@ -6,6 +6,7 @@ For educational and authorized testing purposes only.
 """
 
 import argparse
+import os
 import re
 import sys
 import urllib.parse
@@ -222,7 +223,14 @@ def search_dork(dork, num_results=10):
     print_info(f"Searching Google for: {dork}")
     
     try:
-        search = GoogleSearch()
+        scraper_api_key = os.environ.get('SCRAPER_API_KEY')
+        if scraper_api_key:
+            print_info("Using ScraperAPI to bypass captcha...")
+            search = GoogleSearch(scraper_api_key=scraper_api_key)
+        else:
+            print_warning("No ScraperAPI key found. Google may block requests.")
+            search = GoogleSearch()
+        
         results = search.search(dork, num_results=num_results)
         
         urls = []
