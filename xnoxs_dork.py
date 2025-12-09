@@ -11,11 +11,15 @@ import sys
 import time
 import urllib.parse
 import html
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from colorama import Fore, Back, Style, init
 import requests
 from SearchEngine import GoogleSearch
 
 init(autoreset=True)
+
+thread_lock = threading.Lock()
 
 XSS_PAYLOADS = [
     '<script>alert("XSS")</script>',
@@ -28,6 +32,47 @@ XSS_PAYLOADS = [
     '"><img src=x onerror=alert("XSS")>',
     "javascript:alert('XSS')",
     '<div onmouseover="alert(\'XSS\')">',
+]
+
+DOM_XSS_SOURCES = [
+    r'document\.URL',
+    r'document\.documentURI',
+    r'document\.URLUnencoded',
+    r'document\.baseURI',
+    r'location\.href',
+    r'location\.search',
+    r'location\.hash',
+    r'location\.pathname',
+    r'document\.cookie',
+    r'document\.referrer',
+    r'window\.name',
+    r'history\.pushState',
+    r'history\.replaceState',
+    r'localStorage\.',
+    r'sessionStorage\.',
+]
+
+DOM_XSS_SINKS = [
+    r'eval\s*\(',
+    r'setTimeout\s*\(',
+    r'setInterval\s*\(',
+    r'Function\s*\(',
+    r'\.innerHTML\s*=',
+    r'\.outerHTML\s*=',
+    r'\.insertAdjacentHTML\s*\(',
+    r'document\.write\s*\(',
+    r'document\.writeln\s*\(',
+    r'\.src\s*=',
+    r'\.href\s*=',
+    r'\.action\s*=',
+    r'\.data\s*=',
+    r'jQuery\s*\(\s*["\']<',
+    r'\$\s*\(\s*["\']<',
+    r'\.html\s*\(',
+    r'\.append\s*\(',
+    r'\.prepend\s*\(',
+    r'\.after\s*\(',
+    r'\.before\s*\(',
 ]
 
 XSS_DETECTION_PATTERNS = [
@@ -112,11 +157,13 @@ SQL_ERROR_PATTERNS = {
 
 settings = {
     'num_results': 10,
-    'timeout': 10
+    'timeout': 10,
+    'threads': 5
 }
 
 all_vulnerabilities = []
 all_xss_vulnerabilities = []
+all_dom_xss_vulnerabilities = []
 
 
 def clear_screen():
@@ -135,7 +182,7 @@ def print_banner():
     ║  {Fore.RED}╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝    {Fore.MAGENTA}╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝{Fore.CYAN}  ║
     ║                                                                      ║
     ║  {Fore.YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{Fore.CYAN}  ║
-    ║  {Fore.WHITE}       SQL Injection & XSS Vulnerability Scanner v2.1{Fore.CYAN}             ║
+    ║  {Fore.WHITE}    SQLi & XSS Vulnerability Scanner v2.2 [Multi-threaded]{Fore.CYAN}        ║
     ║  {Fore.GREEN}              For Security Research Purposes Only{Fore.CYAN}                  ║
     ║  {Fore.YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{Fore.CYAN}  ║
     ║                                                                      ║
@@ -150,7 +197,7 @@ def print_menu():
     menu = f"""
     {Fore.CYAN}┌────────────────────────────────────────────────────────────────────┐
     │                                                                    │
-    │  {Fore.YELLOW}[1]{Fore.WHITE} ◆  Scan dengan Google Dork                                  {Fore.CYAN}│
+    │  {Fore.YELLOW}[1]{Fore.WHITE} ◆  Scan dengan Google Dork (Multi-threaded)                 {Fore.CYAN}│
     │  {Fore.YELLOW}[2]{Fore.WHITE} ◆  Scan URL Tunggal                                         {Fore.CYAN}│
     │  {Fore.YELLOW}[3]{Fore.WHITE} ◆  Lihat Hasil Vulnerability                                {Fore.CYAN}│
     │  {Fore.YELLOW}[4]{Fore.WHITE} ◆  Pengaturan                                               {Fore.CYAN}│
@@ -158,7 +205,7 @@ def print_menu():
     │  {Fore.YELLOW}[0]{Fore.WHITE} ◆  Keluar                                                   {Fore.CYAN}│
     │                                                                    │
     ├────────────────────────────────────────────────────────────────────┤
-    │  {Fore.MAGENTA}ScraperAPI: {api_status}  {Fore.CYAN}│  {Fore.MAGENTA}Timeout: {Fore.WHITE}{settings['timeout']}s  {Fore.CYAN}│  {Fore.MAGENTA}Max Results: {Fore.WHITE}{settings['num_results']}       {Fore.CYAN}│
+    │  {Fore.MAGENTA}Threads: {Fore.WHITE}{settings['threads']}  {Fore.CYAN}│  {Fore.MAGENTA}Timeout: {Fore.WHITE}{settings['timeout']}s  {Fore.CYAN}│  {Fore.MAGENTA}Results: {Fore.WHITE}{settings['num_results']}  {Fore.CYAN}│  {Fore.MAGENTA}API: {api_status}   {Fore.CYAN}│
     └────────────────────────────────────────────────────────────────────┘
 {Style.RESET_ALL}"""
     print(menu)
@@ -209,6 +256,20 @@ def print_xss_vuln(url, xss_type, payload):
 """)
 
 
+def print_dom_xss_vuln(url, source, sink):
+    source_display = source[:45] if len(source) > 45 else source
+    sink_display = sink[:45] if len(sink) > 45 else sink
+    print(f"""
+    {Fore.YELLOW}╔{'═'*66}╗
+    ║{Back.YELLOW}{Fore.BLACK}  VULNERABLE  {Style.RESET_ALL}{Fore.YELLOW}║ DOM-based XSS Detected!                           ║
+    ╠{'═'*66}╣{Style.RESET_ALL}
+    {Fore.YELLOW}║{Fore.WHITE} URL:{Style.RESET_ALL} {url[:58]}{'...' if len(url) > 58 else ''}{' ' * max(0, 58 - len(url[:58]))} {Fore.YELLOW}║
+    {Fore.YELLOW}║{Fore.WHITE} Source:{Style.RESET_ALL} {source_display}{' ' * max(0, 55 - len(source_display))} {Fore.YELLOW}║
+    {Fore.YELLOW}║{Fore.WHITE} Sink:{Style.RESET_ALL} {sink_display}{' ' * max(0, 57 - len(sink_display))} {Fore.YELLOW}║
+    {Fore.YELLOW}╚{'═'*66}╝{Style.RESET_ALL}
+""")
+
+
 def loading_animation(text, duration=1):
     frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
     end_time = time.time() + duration
@@ -254,6 +315,57 @@ def detect_xss(response_text, payload):
             return 'Reflected XSS', payload
     
     return None, None
+
+
+def detect_dom_xss(response_text):
+    dom_vulns = []
+    found_sources = []
+    found_sinks = []
+    
+    for source_pattern in DOM_XSS_SOURCES:
+        matches = re.findall(source_pattern, response_text, re.IGNORECASE)
+        if matches:
+            found_sources.append(source_pattern.replace('\\', ''))
+    
+    for sink_pattern in DOM_XSS_SINKS:
+        matches = re.findall(sink_pattern, response_text, re.IGNORECASE)
+        if matches:
+            found_sinks.append(sink_pattern.replace('\\', '').replace(r'\s*', '').replace(r'\(', '('))
+    
+    if found_sources and found_sinks:
+        for source in found_sources[:3]:
+            for sink in found_sinks[:3]:
+                dom_vulns.append({
+                    'source': source,
+                    'sink': sink
+                })
+    
+    return dom_vulns
+
+
+def scan_dom_xss(url, timeout=10, silent=False):
+    dom_vulns = []
+    
+    response_text = test_url(url, timeout)
+    
+    if response_text:
+        detected_dom = detect_dom_xss(response_text)
+        
+        for dom in detected_dom:
+            vuln = {
+                'url': url,
+                'source': dom['source'],
+                'sink': dom['sink']
+            }
+            dom_vulns.append(vuln)
+            with thread_lock:
+                all_dom_xss_vulnerabilities.append(vuln)
+            if not silent:
+                with thread_lock:
+                    print_dom_xss_vuln(url, dom['source'], dom['sink'])
+            break
+    
+    return dom_vulns
 
 
 def inject_xss_payload(url, payload):
@@ -308,10 +420,12 @@ def scan_xss(url, timeout=10, silent=False):
                         'payload': used_payload
                     }
                     xss_vulns.append(vuln)
-                    all_xss_vulnerabilities.append(vuln)
+                    with thread_lock:
+                        all_xss_vulnerabilities.append(vuln)
                     tested_params.add(param_name)
                     if not silent:
-                        print_xss_vuln(injected_url, xss_type, used_payload)
+                        with thread_lock:
+                            print_xss_vuln(injected_url, xss_type, used_payload)
     
     return xss_vulns
 
@@ -366,15 +480,18 @@ def test_url(url, timeout=10):
 def scan_url(url, timeout=10, silent=False):
     vulnerabilities = []
     xss_vulns = []
+    dom_vulns = []
     
     if not silent:
-        print_info(f"{Fore.CYAN}[SQL Injection Scan]{Style.RESET_ALL}")
+        with thread_lock:
+            print_info(f"{Fore.CYAN}[SQL Injection Scan]{Style.RESET_ALL}")
     
     injected_urls = inject_payload(url)
     
     for param_name, injected_url in injected_urls:
         if not silent:
-            print_info(f"Testing parameter: {Fore.YELLOW}{param_name}{Style.RESET_ALL}")
+            with thread_lock:
+                print_info(f"Testing parameter: {Fore.YELLOW}{param_name}{Style.RESET_ALL}")
         
         response_text = test_url(injected_url, timeout)
         
@@ -389,16 +506,77 @@ def scan_url(url, timeout=10, silent=False):
                     'error': error_snippet
                 }
                 vulnerabilities.append(vuln)
-                all_vulnerabilities.append(vuln)
+                with thread_lock:
+                    all_vulnerabilities.append(vuln)
                 if not silent:
-                    print_vuln(injected_url, db_type, error_snippet)
+                    with thread_lock:
+                        print_vuln(injected_url, db_type, error_snippet)
     
     if not silent:
-        print_info(f"{Fore.MAGENTA}[XSS Scan]{Style.RESET_ALL}")
+        with thread_lock:
+            print_info(f"{Fore.MAGENTA}[Reflected XSS Scan]{Style.RESET_ALL}")
     
     xss_vulns = scan_xss(url, timeout, silent)
     
-    return vulnerabilities, xss_vulns
+    if not silent:
+        with thread_lock:
+            print_info(f"{Fore.YELLOW}[DOM-based XSS Scan]{Style.RESET_ALL}")
+    
+    dom_vulns = scan_dom_xss(url, timeout, silent)
+    
+    return vulnerabilities, xss_vulns, dom_vulns
+
+
+def scan_url_threaded(url, timeout=10):
+    return scan_url(url, timeout, silent=True)
+
+
+def multi_threaded_scan(urls, timeout=10, num_threads=5):
+    results = {
+        'sql_vulns': 0,
+        'xss_vulns': 0,
+        'dom_vulns': 0,
+        'scanned': 0
+    }
+    
+    def scan_worker(url):
+        try:
+            sql, xss, dom = scan_url_threaded(url, timeout)
+            return len(sql), len(xss), len(dom), url
+        except Exception:
+            return 0, 0, 0, url
+    
+    with ThreadPoolExecutor(max_workers=num_threads) as executor:
+        futures = {executor.submit(scan_worker, url): url for url in urls}
+        
+        for future in as_completed(futures):
+            try:
+                sql_count, xss_count, dom_count, scanned_url = future.result()
+                results['sql_vulns'] += sql_count
+                results['xss_vulns'] += xss_count
+                results['dom_vulns'] += dom_count
+                results['scanned'] += 1
+                
+                with thread_lock:
+                    progress_bar(results['scanned'], len(urls), f"{Fore.CYAN}Scanning{Style.RESET_ALL}")
+                    
+                    status_parts = []
+                    if sql_count > 0:
+                        status_parts.append(f"{Fore.RED}SQLi:{sql_count}{Style.RESET_ALL}")
+                    if xss_count > 0:
+                        status_parts.append(f"{Fore.MAGENTA}XSS:{xss_count}{Style.RESET_ALL}")
+                    if dom_count > 0:
+                        status_parts.append(f"{Fore.YELLOW}DOM:{dom_count}{Style.RESET_ALL}")
+                    
+                    if status_parts:
+                        print(f"\n    {Fore.GREEN}[+]{Style.RESET_ALL} {scanned_url[:50]}... [{', '.join(status_parts)}]")
+                    else:
+                        print(f"\n    {Fore.BLUE}[-]{Style.RESET_ALL} {scanned_url[:60]}...")
+                        
+            except Exception:
+                results['scanned'] += 1
+    
+    return results
 
 
 def search_dork(dork, num_results=10):
@@ -463,27 +641,22 @@ def menu_dork_scan():
     
     if urls:
         print_divider()
-        print_info(f"Memulai scan {len(urls)} URL (SQL Injection + XSS)...")
+        print_info(f"Memulai scan {len(urls)} URL dengan {Fore.GREEN}{settings['threads']} threads{Style.RESET_ALL}")
+        print_info(f"Scan: SQL Injection + Reflected XSS + DOM-based XSS")
         print()
         
-        found_sql_vulns = 0
-        found_xss_vulns = 0
-        for i, url in enumerate(urls, 1):
-            progress_bar(i, len(urls), f"{Fore.CYAN}Scanning{Style.RESET_ALL}")
-            print(f"\n    {Fore.CYAN}[{i}/{len(urls)}]{Style.RESET_ALL} {url[:60]}...")
-            sql_vulns, xss_vulns = scan_url(url, settings['timeout'])
-            found_sql_vulns += len(sql_vulns)
-            found_xss_vulns += len(xss_vulns)
+        results = multi_threaded_scan(urls, settings['timeout'], settings['threads'])
         
         print_divider()
-        total_vulns = found_sql_vulns + found_xss_vulns
+        total_vulns = results['sql_vulns'] + results['xss_vulns'] + results['dom_vulns']
         print(f"""
     {Fore.CYAN}╔{'═'*66}╗
     ║{Fore.GREEN}                      SCAN SELESAI                               {Fore.CYAN}║
     ╠{'═'*66}╣
     ║{Fore.WHITE}  Total URL di-scan    : {Fore.YELLOW}{len(urls):<40}{Fore.CYAN}║
-    ║{Fore.WHITE}  SQL Injection Found  : {Fore.RED if found_sql_vulns > 0 else Fore.GREEN}{found_sql_vulns:<40}{Fore.CYAN}║
-    ║{Fore.WHITE}  XSS Found            : {Fore.MAGENTA if found_xss_vulns > 0 else Fore.GREEN}{found_xss_vulns:<40}{Fore.CYAN}║
+    ║{Fore.WHITE}  SQL Injection Found  : {Fore.RED if results['sql_vulns'] > 0 else Fore.GREEN}{results['sql_vulns']:<40}{Fore.CYAN}║
+    ║{Fore.WHITE}  Reflected XSS Found  : {Fore.MAGENTA if results['xss_vulns'] > 0 else Fore.GREEN}{results['xss_vulns']:<40}{Fore.CYAN}║
+    ║{Fore.WHITE}  DOM-based XSS Found  : {Fore.YELLOW if results['dom_vulns'] > 0 else Fore.GREEN}{results['dom_vulns']:<40}{Fore.CYAN}║
     ║{Fore.WHITE}  Total Vulnerability  : {Fore.RED if total_vulns > 0 else Fore.GREEN}{total_vulns:<40}{Fore.CYAN}║
     ╚{'═'*66}╝{Style.RESET_ALL}
 """)
@@ -524,14 +697,14 @@ def menu_single_url():
     import urllib3
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     
-    loading_animation("Menyiapkan scan (SQL Injection + XSS)...", 1)
+    loading_animation("Menyiapkan scan (SQLi + Reflected XSS + DOM XSS)...", 1)
     
-    sql_vulns, xss_vulns = scan_url(url, settings['timeout'])
+    sql_vulns, xss_vulns, dom_vulns = scan_url(url, settings['timeout'])
     
     print_divider()
-    total_vulns = len(sql_vulns) + len(xss_vulns)
+    total_vulns = len(sql_vulns) + len(xss_vulns) + len(dom_vulns)
     if total_vulns > 0:
-        print_success(f"Ditemukan {Fore.RED}{len(sql_vulns)}{Style.RESET_ALL} SQL Injection, {Fore.MAGENTA}{len(xss_vulns)}{Style.RESET_ALL} XSS vulnerability!")
+        print_success(f"Ditemukan: {Fore.RED}{len(sql_vulns)}{Style.RESET_ALL} SQLi, {Fore.MAGENTA}{len(xss_vulns)}{Style.RESET_ALL} Reflected XSS, {Fore.YELLOW}{len(dom_vulns)}{Style.RESET_ALL} DOM XSS")
     else:
         print_warning("Tidak ada vulnerability ditemukan.")
     
@@ -548,13 +721,13 @@ def menu_view_results():
     └────────────────────────────────────────────────────────────────────┘
 {Style.RESET_ALL}""")
     
-    total_vulns = len(all_vulnerabilities) + len(all_xss_vulnerabilities)
+    total_vulns = len(all_vulnerabilities) + len(all_xss_vulnerabilities) + len(all_dom_xss_vulnerabilities)
     
     if total_vulns == 0:
         print_warning("Belum ada vulnerability yang ditemukan.")
         print_info("Lakukan scan terlebih dahulu untuk melihat hasil.")
     else:
-        print_success(f"Total: {Fore.RED}{len(all_vulnerabilities)}{Style.RESET_ALL} SQL Injection, {Fore.MAGENTA}{len(all_xss_vulnerabilities)}{Style.RESET_ALL} XSS\n")
+        print_success(f"Total: {Fore.RED}{len(all_vulnerabilities)}{Style.RESET_ALL} SQLi, {Fore.MAGENTA}{len(all_xss_vulnerabilities)}{Style.RESET_ALL} Reflected XSS, {Fore.YELLOW}{len(all_dom_xss_vulnerabilities)}{Style.RESET_ALL} DOM XSS\n")
         
         if all_vulnerabilities:
             print(f"\n    {Fore.RED}═══ SQL INJECTION VULNERABILITIES ═══{Style.RESET_ALL}")
@@ -567,7 +740,7 @@ def menu_view_results():
     {Fore.YELLOW}Error:{Style.RESET_ALL} {vuln['error'][:80]}...""")
         
         if all_xss_vulnerabilities:
-            print(f"\n    {Fore.MAGENTA}═══ XSS VULNERABILITIES ═══{Style.RESET_ALL}")
+            print(f"\n    {Fore.MAGENTA}═══ REFLECTED XSS VULNERABILITIES ═══{Style.RESET_ALL}")
             for i, vuln in enumerate(all_xss_vulnerabilities, 1):
                 payload_display = vuln['payload'][:60] if len(vuln['payload']) > 60 else vuln['payload']
                 print(f"""
@@ -576,6 +749,15 @@ def menu_view_results():
     {Fore.YELLOW}Parameter:{Style.RESET_ALL} {vuln['parameter']}
     {Fore.YELLOW}Type:{Style.RESET_ALL} {vuln['xss_type']}
     {Fore.YELLOW}Payload:{Style.RESET_ALL} {payload_display}""")
+        
+        if all_dom_xss_vulnerabilities:
+            print(f"\n    {Fore.YELLOW}═══ DOM-BASED XSS VULNERABILITIES ═══{Style.RESET_ALL}")
+            for i, vuln in enumerate(all_dom_xss_vulnerabilities, 1):
+                print(f"""
+    {Fore.YELLOW}[DOM-{i}]{Style.RESET_ALL} {Fore.CYAN}{'─'*55}{Style.RESET_ALL}
+    {Fore.WHITE}URL:{Style.RESET_ALL} {vuln['url'][:70]}{'...' if len(vuln['url']) > 70 else ''}
+    {Fore.WHITE}Source:{Style.RESET_ALL} {vuln['source']}
+    {Fore.WHITE}Sink:{Style.RESET_ALL} {vuln['sink']}""")
         
         print(f"\n    {Fore.CYAN}{'─'*60}{Style.RESET_ALL}")
     
@@ -596,6 +778,7 @@ def menu_settings():
     │                                                                    │
     │  {Fore.YELLOW}[1]{Fore.WHITE} Jumlah Hasil Pencarian  : {Fore.GREEN}{settings['num_results']:<35}{Fore.CYAN}│
     │  {Fore.YELLOW}[2]{Fore.WHITE} Request Timeout (detik) : {Fore.GREEN}{settings['timeout']:<35}{Fore.CYAN}│
+    │  {Fore.YELLOW}[3]{Fore.WHITE} Jumlah Thread           : {Fore.GREEN}{settings['threads']:<35}{Fore.CYAN}│
     │                                                                    │
     ├────────────────────────────────────────────────────────────────────┤
     │  {Fore.MAGENTA}ScraperAPI Status: {api_status}{' '*40}{Fore.CYAN}│
@@ -630,6 +813,18 @@ def menu_settings():
                 print_error("Masukkan angka yang valid!")
             time.sleep(1)
         
+        elif choice == '3':
+            try:
+                threads = int(input(f"    {Fore.YELLOW}➤{Style.RESET_ALL} Jumlah thread (1-20): "))
+                if 1 <= threads <= 20:
+                    settings['threads'] = threads
+                    print_success("Pengaturan disimpan!")
+                else:
+                    print_error("Nilai harus antara 1-20")
+            except ValueError:
+                print_error("Masukkan angka yang valid!")
+            time.sleep(1)
+        
         elif choice == '0':
             break
 
@@ -647,9 +842,10 @@ def menu_about():
     │  {Fore.WHITE}Injection dan XSS pada website. Tool ini melakukan:{Fore.CYAN}              │
     │                                                                    │
     │  {Fore.GREEN}•{Fore.WHITE} Pencarian Google menggunakan dork query{Fore.CYAN}                      │
+    │  {Fore.GREEN}•{Fore.WHITE} Multi-threaded scanning untuk performa lebih cepat{Fore.CYAN}           │
     │  {Fore.GREEN}•{Fore.WHITE} Scan SQL Injection (MySQL, PostgreSQL, MSSQL, dll){Fore.CYAN}           │
-    │  {Fore.GREEN}•{Fore.WHITE} Scan XSS (Cross-Site Scripting) dengan multiple payload{Fore.CYAN}      │
-    │  {Fore.GREEN}•{Fore.WHITE} Deteksi Reflected XSS pada parameter URL{Fore.CYAN}                     │
+    │  {Fore.GREEN}•{Fore.WHITE} Scan Reflected XSS dengan multiple payload{Fore.CYAN}                   │
+    │  {Fore.GREEN}•{Fore.WHITE} Scan DOM-based XSS (source & sink analysis){Fore.CYAN}                  │
     │  {Fore.GREEN}•{Fore.WHITE} Bypass captcha Google dengan ScraperAPI{Fore.CYAN}                      │
     │                                                                    │
     ├────────────────────────────────────────────────────────────────────┤
@@ -658,7 +854,7 @@ def menu_about():
     │  {Fore.WHITE}Pastikan Anda memiliki izin sebelum melakukan testing.{Fore.CYAN}           │
     │                                                                    │
     ├────────────────────────────────────────────────────────────────────┤
-    │  {Fore.MAGENTA}Version: {Fore.WHITE}2.1{Fore.CYAN}                                                      │
+    │  {Fore.MAGENTA}Version: {Fore.WHITE}2.2{Fore.CYAN}                                                      │
     │  {Fore.MAGENTA}Author:{Fore.WHITE}  xnoxs{Fore.CYAN}                                                    │
     │  {Fore.MAGENTA}GitHub:{Fore.WHITE}  github.com/developerxnoxs{Fore.CYAN}                                │
     └────────────────────────────────────────────────────────────────────┘
