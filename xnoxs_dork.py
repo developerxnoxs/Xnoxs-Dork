@@ -222,8 +222,8 @@ def search_dork(dork, num_results=10):
     print_info(f"Searching Google for: {dork}")
     
     try:
-        search = GoogleSearch(dork)
-        results = search.search(max_results=num_results)
+        search = GoogleSearch()
+        results = search.search(dork, num_results=num_results)
         
         urls = []
         for result in results:
