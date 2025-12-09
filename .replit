@@ -21,9 +21,9 @@ args = "xnoxs-dork"
 name = "xnoxs-dork"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python xnoxs_dork.py --help"
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python xnoxs_dork.py"

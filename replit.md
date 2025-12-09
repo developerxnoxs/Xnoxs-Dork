@@ -1,26 +1,22 @@
 # xnoxs-dork - SQL Injection Vulnerability Scanner
 
 ## Overview
-A Python CLI security research tool for detecting SQL injection vulnerabilities by testing websites with single quote (') injection and detecting database error patterns.
+A Python security research tool with interactive menu for detecting SQL injection vulnerabilities by testing websites with single quote (') injection and detecting database error patterns.
 
 ## Usage
 
 ```bash
-# Search using Google dork and test URLs
-python xnoxs_dork.py -d "inurl:php?id="
-
-# Test a single URL
-python xnoxs_dork.py -u "http://example.com/page.php?id=1"
-
-# More results with custom timeout
-python xnoxs_dork.py -d "inurl:product.php?id=" -n 20 -t 15
+# Run the interactive menu
+python xnoxs_dork.py
 ```
 
-## Options
-- `-d, --dork` - Google dork query to search
-- `-u, --url` - Single URL to test
-- `-n, --num` - Number of search results (default: 10)
-- `-t, --timeout` - Request timeout in seconds (default: 10)
+## Menu Options
+1. Scan dengan Google Dork - Search Google and scan found URLs
+2. Scan URL Tunggal - Test a single URL directly
+3. Lihat Hasil Vulnerability - View all found vulnerabilities
+4. Pengaturan - Configure timeout and number of results
+5. Tentang Tool - About the tool
+0. Keluar - Exit
 
 ## Features
 - Google dork search integration via xnoxs-engine library
