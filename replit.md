@@ -24,9 +24,13 @@ python xnoxs_dork.py -d "inurl:product.php?id=" -n 20 -t 15
 
 ## Features
 - Google dork search integration via xnoxs-engine library
+- ScraperAPI integration for bypassing Google captcha
 - SQL injection detection by injecting single quote (')
 - Error pattern recognition for: MySQL, PostgreSQL, MSSQL, Oracle, SQLite, IBM DB2
 - Colored CLI output with vulnerability reports
+
+## Secrets Required
+- `SCRAPER_API_KEY` - ScraperAPI key for Google search (already configured)
 
 ## Dependencies
 - requests
@@ -39,4 +43,4 @@ python xnoxs_dork.py -d "inurl:product.php?id=" -n 20 -t 15
   - `inject_payload()` - URL parameter injection
   - `detect_sql_error()` - Error pattern matching
   - `scan_url()` - URL vulnerability testing
-  - `search_dork()` - Google search integration
+  - `search_dork()` - Google search integration with ScraperAPI
