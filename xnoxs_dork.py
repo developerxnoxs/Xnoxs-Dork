@@ -19,7 +19,7 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from colorama import Fore, Back, Style, init
 import requests
-from SearchEngine import GoogleSearch
+from SearchEngine import GoogleSearch, DuckDuckGoSearch
 
 init(autoreset=True)
 
@@ -1740,18 +1740,27 @@ def multi_threaded_scan(urls, timeout=10, num_threads=5):
     return results
 
 
-def search_dork(dork, num_results=100):
+def search_dork(dork, num_results=100, engine="google"):
     try:
-        scraper_api_key = "1820c54a47ebf6d3557d9be57aa70c81"
-        print_info("Menggunakan ScraperAPI untuk bypass captcha...")
-        search = GoogleSearch(scraper_api_key=scraper_api_key)
-        
         urls = []
         results_per_page = 10
         total_pages = (num_results + results_per_page - 1) // results_per_page
         
+        if engine == "google":
+            scraper_api_key = os.environ.get("SCRAPER_API_KEY", "1820c54a47ebf6d3557d9be57aa70c81")
+            print_info(f"Menggunakan {Fore.GREEN}Google{Style.RESET_ALL} dengan ScraperAPI untuk bypass captcha...")
+            search = GoogleSearch(scraper_api_key=scraper_api_key)
+            engine_name = "Google"
+        elif engine == "duckduckgo":
+            print_info(f"Menggunakan {Fore.YELLOW}DuckDuckGo{Style.RESET_ALL} (tanpa proxy)...")
+            search = DuckDuckGoSearch()
+            engine_name = "DuckDuckGo"
+        else:
+            print_error(f"Mesin pencari tidak dikenal: {engine}")
+            return []
+        
         for page in range(1, total_pages + 1):
-            loading_animation(f"Mencari di Google... (Halaman {page}/{total_pages})", 1)
+            loading_animation(f"Mencari di {engine_name}... (Halaman {page}/{total_pages})", 1)
             try:
                 results = search.search(dork, num_results=results_per_page, page=page)
                 
@@ -1786,13 +1795,31 @@ def search_dork(dork, num_results=100):
         return []
 
 
+def select_search_engine():
+    """Prompt user to select search engine."""
+    print(f"""
+    {Fore.CYAN}╔════════════════════════════════════════════════════════════════════╗
+    ║  {Fore.YELLOW}◆  PILIH MESIN PENCARI{Fore.CYAN}                                            ║
+    ╠════════════════════════════════════════════════════════════════════╣
+    ║  {Fore.YELLOW}[1]{Fore.WHITE} Google       {Fore.GREEN}(dengan ScraperAPI - lebih akurat){Fore.CYAN}              ║
+    ║  {Fore.YELLOW}[2]{Fore.WHITE} DuckDuckGo   {Fore.YELLOW}(tanpa proxy - lebih cepat){Fore.CYAN}                    ║
+    ╚════════════════════════════════════════════════════════════════════╝
+{Style.RESET_ALL}""")
+    
+    engine_choice = input(f"    {Fore.YELLOW}➤{Style.RESET_ALL} Pilih mesin pencari [1/2]: ").strip()
+    
+    if engine_choice == "2":
+        return "duckduckgo"
+    return "google"
+
+
 def menu_dork_scan():
     clear_screen()
     print_banner()
     
     print(f"""
     {Fore.CYAN}╔════════════════════════════════════════════════════════════════════╗
-    ║  {Fore.YELLOW}◆  GOOGLE DORK SCANNER{Fore.CYAN}                                           ║
+    ║  {Fore.YELLOW}◆  DORK SCANNER{Fore.CYAN}                                                   ║
     ╠════════════════════════════════════════════════════════════════════╣
     ║  {Fore.YELLOW}[1]{Fore.WHITE} Masukkan Dork Manual                                        {Fore.CYAN}║
     ║  {Fore.YELLOW}[2]{Fore.WHITE} Lihat Sample Dorks                                          {Fore.CYAN}║
@@ -1815,14 +1842,15 @@ def menu_dork_scan():
     print(f"    {Fore.GREEN}•{Style.RESET_ALL} inurl:cmd= filetype:php (RCE)")
     print()
     
-    dork = input(f"    {Fore.YELLOW}➤{Style.RESET_ALL} Masukkan Google Dork: ").strip()
+    dork = input(f"    {Fore.YELLOW}➤{Style.RESET_ALL} Masukkan Dork: ").strip()
     
     if not dork:
         print_error("Dork tidak boleh kosong!")
         input(f"\n    {Fore.CYAN}Tekan Enter untuk kembali...{Style.RESET_ALL}")
         return
     
-    run_dork_scan(dork)
+    engine = select_search_engine()
+    run_dork_scan(dork, engine)
 
 
 def menu_sample_dorks():
@@ -1868,16 +1896,18 @@ def menu_sample_dorks():
             if dork_choice.isdigit():
                 dork_idx = int(dork_choice) - 1
                 if 0 <= dork_idx < len(dorks):
-                    run_dork_scan(dorks[dork_idx])
+                    engine = select_search_engine()
+                    run_dork_scan(dorks[dork_idx], engine)
                     return
             elif dork_choice:
-                run_dork_scan(dork_choice)
+                engine = select_search_engine()
+                run_dork_scan(dork_choice, engine)
                 return
     except (ValueError, IndexError):
         pass
 
 
-def run_dork_scan(dork):
+def run_dork_scan(dork, engine="google"):
     """Execute dork scan with the given dork."""
     print_divider()
     print_info(f"Mencari: {Fore.YELLOW}{dork}{Style.RESET_ALL}")
@@ -1885,7 +1915,7 @@ def run_dork_scan(dork):
     import urllib3
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     
-    urls = search_dork(dork, settings['num_results'])
+    urls = search_dork(dork, settings['num_results'], engine)
     
     if urls:
         print_divider()
