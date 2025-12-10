@@ -172,21 +172,17 @@ def clear_screen():
 
 def print_banner():
     banner = f"""
-{Fore.CYAN}    ╔══════════════════════════════════════════════════════════════════════╗
-    ║                                                                      ║
-    ║  {Fore.RED}██╗  ██╗███╗   ██╗ ██████╗ ██╗  ██╗███████╗    {Fore.MAGENTA}██████╗  ██████╗ ██████╗ ██╗  ██╗{Fore.CYAN}  ║
-    ║  {Fore.RED}╚██╗██╔╝████╗  ██║██╔═══██╗╚██╗██╔╝██╔════╝    {Fore.MAGENTA}██╔══██╗██╔═══██╗██╔══██╗██║ ██╔╝{Fore.CYAN}  ║
-    ║  {Fore.RED} ╚███╔╝ ██╔██╗ ██║██║   ██║ ╚███╔╝ ███████╗    {Fore.MAGENTA}██║  ██║██║   ██║██████╔╝█████╔╝{Fore.CYAN}   ║
-    ║  {Fore.RED} ██╔██╗ ██║╚██╗██║██║   ██║ ██╔██╗ ╚════██║    {Fore.MAGENTA}██║  ██║██║   ██║██╔══██╗██╔═██╗{Fore.CYAN}   ║
-    ║  {Fore.RED}██╔╝ ██╗██║ ╚████║╚██████╔╝██╔╝ ██╗███████║    {Fore.MAGENTA}██████╔╝╚██████╔╝██║  ██║██║  ██╗{Fore.CYAN}  ║
-    ║  {Fore.RED}╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝    {Fore.MAGENTA}╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝{Fore.CYAN}  ║
-    ║                                                                      ║
-    ║  {Fore.YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{Fore.CYAN}  ║
-    ║  {Fore.WHITE}    SQLi & XSS Vulnerability Scanner v2.2 [Multi-threaded]{Fore.CYAN}        ║
-    ║  {Fore.GREEN}              For Security Research Purposes Only{Fore.CYAN}                  ║
-    ║  {Fore.YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━{Fore.CYAN}  ║
-    ║                                                                      ║
-    ╚══════════════════════════════════════════════════════════════════════╝
+{Fore.RED}    ██╗  ██╗███╗   ██╗ ██████╗ ██╗  ██╗███████╗    {Fore.MAGENTA}██████╗  ██████╗ ██████╗ ██╗  ██╗
+{Fore.RED}    ╚██╗██╔╝████╗  ██║██╔═══██╗╚██╗██╔╝██╔════╝    {Fore.MAGENTA}██╔══██╗██╔═══██╗██╔══██╗██║ ██╔╝
+{Fore.RED}     ╚███╔╝ ██╔██╗ ██║██║   ██║ ╚███╔╝ ███████╗    {Fore.MAGENTA}██║  ██║██║   ██║██████╔╝█████╔╝
+{Fore.RED}     ██╔██╗ ██║╚██╗██║██║   ██║ ██╔██╗ ╚════██║    {Fore.MAGENTA}██║  ██║██║   ██║██╔══██╗██╔═██╗
+{Fore.RED}    ██╔╝ ██╗██║ ╚████║╚██████╔╝██╔╝ ██╗███████║    {Fore.MAGENTA}██████╔╝╚██████╔╝██║  ██║██║  ██╗
+{Fore.RED}    ╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝    {Fore.MAGENTA}╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝
+
+{Fore.CYAN}    ══════════════════════════════════════════════════════════════════════
+{Fore.WHITE}          SQLi & XSS Vulnerability Scanner v2.2 [Multi-threaded]
+{Fore.GREEN}                    For Security Research Purposes Only
+{Fore.CYAN}    ══════════════════════════════════════════════════════════════════════
 {Style.RESET_ALL}"""
     print(banner)
 
@@ -585,19 +581,38 @@ def search_dork(dork, num_results=100):
         print_info("Menggunakan ScraperAPI untuk bypass captcha...")
         search = GoogleSearch(scraper_api_key=scraper_api_key)
         
-        loading_animation("Mencari di Google...", 2)
-        results = search.search(dork, num_results=num_results)
-        
         urls = []
-        for result in results:
-            if hasattr(result, 'url'):
-                urls.append(result.url)
-            elif isinstance(result, dict) and 'url' in result:
-                urls.append(result['url'])
-            elif isinstance(result, str):
-                urls.append(result)
+        results_per_page = 10
+        total_pages = (num_results + results_per_page - 1) // results_per_page
         
-        print_success(f"Ditemukan {Fore.YELLOW}{len(urls)}{Style.RESET_ALL} URL")
+        for page in range(1, total_pages + 1):
+            loading_animation(f"Mencari di Google... (Halaman {page}/{total_pages})", 1)
+            try:
+                results = search.search(dork, num_results=results_per_page, page=page)
+                
+                for result in results:
+                    if hasattr(result, 'url'):
+                        urls.append(result.url)
+                    elif isinstance(result, dict) and 'url' in result:
+                        urls.append(result['url'])
+                    elif isinstance(result, str):
+                        urls.append(result)
+                
+                print_info(f"Halaman {page}: Ditemukan {Fore.YELLOW}{len(results)}{Style.RESET_ALL} URL")
+                
+                if len(urls) >= num_results:
+                    break
+                    
+                if len(results) < results_per_page:
+                    break
+                    
+            except Exception as e:
+                print_warning(f"Halaman {page} error: {str(e)}")
+                continue
+        
+        urls = list(dict.fromkeys(urls))[:num_results]
+        
+        print_success(f"Total ditemukan {Fore.YELLOW}{len(urls)}{Style.RESET_ALL} URL unik")
         return urls
     except Exception as e:
         print_error(f"Search error: {str(e)}")
