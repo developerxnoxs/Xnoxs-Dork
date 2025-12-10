@@ -784,17 +784,17 @@ def menu_settings():
         
         print(f"""
     {Fore.CYAN}┌────────────────────────────────────────────────────────────────────┐
-    │  {Fore.YELLOW}◆  PENGATURAN{Fore.CYAN}                                                    │
+    │  {Fore.YELLOW}◆  PENGATURAN{Fore.CYAN}                                                     │
     ├────────────────────────────────────────────────────────────────────┤
     │                                                                    │
-    │  {Fore.YELLOW}[1]{Fore.WHITE} Jumlah Hasil Pencarian  : {Fore.GREEN}{settings['num_results']:<35}{Fore.CYAN}│
-    │  {Fore.YELLOW}[2]{Fore.WHITE} Request Timeout (detik) : {Fore.GREEN}{settings['timeout']:<35}{Fore.CYAN}│
-    │  {Fore.YELLOW}[3]{Fore.WHITE} Jumlah Thread           : {Fore.GREEN}{settings['threads']:<35}{Fore.CYAN}│
+    │  {Fore.YELLOW}[1]{Fore.WHITE} Jumlah Hasil Pencarian  : {Fore.GREEN}{settings['num_results']:<35}{Fore.CYAN} │
+    │  {Fore.YELLOW}[2]{Fore.WHITE} Request Timeout (detik) : {Fore.GREEN}{settings['timeout']:<35}{Fore.CYAN} │
+    │  {Fore.YELLOW}[3]{Fore.WHITE} Jumlah Thread           : {Fore.GREEN}{settings['threads']:<35}{Fore.CYAN} │
     │                                                                    │
     ├────────────────────────────────────────────────────────────────────┤
-    │  {Fore.MAGENTA}ScraperAPI Status: {api_status}{' '*40}{Fore.CYAN}│
+    │  {Fore.MAGENTA}ScraperAPI Status: {api_status}{' '*40}{Fore.CYAN} │
     ├────────────────────────────────────────────────────────────────────┤
-    │  {Fore.YELLOW}[0]{Fore.WHITE} Kembali ke Menu Utama                                      {Fore.CYAN}│
+    │  {Fore.YELLOW}[0]{Fore.WHITE} Kembali ke Menu Utama                                        {Fore.CYAN} │
     └────────────────────────────────────────────────────────────────────┘
 {Style.RESET_ALL}""")
         
@@ -849,20 +849,20 @@ def menu_about():
     │  {Fore.YELLOW}◆  TENTANG XNOXS-DORK{Fore.CYAN}                                             │
     ├────────────────────────────────────────────────────────────────────┤
     │                                                                    │
-    │  {Fore.WHITE}xnoxs-dork adalah tool untuk mendeteksi kerentanan SQL{Fore.CYAN}           │
-    │  {Fore.WHITE}Injection dan XSS pada website. Tool ini melakukan:{Fore.CYAN}              │
+    │  {Fore.WHITE}xnoxs-dork adalah tool untuk mendeteksi kerentanan SQL{Fore.CYAN}            │
+    │  {Fore.WHITE}Injection dan XSS pada website. Tool ini melakukan:{Fore.CYAN}               │
     │                                                                    │
-    │  {Fore.GREEN}•{Fore.WHITE} Pencarian Google menggunakan dork query{Fore.CYAN}                      │
-    │  {Fore.GREEN}•{Fore.WHITE} Multi-threaded scanning untuk performa lebih cepat{Fore.CYAN}           │
-    │  {Fore.GREEN}•{Fore.WHITE} Scan SQL Injection (MySQL, PostgreSQL, MSSQL, dll){Fore.CYAN}           │
-    │  {Fore.GREEN}•{Fore.WHITE} Scan Reflected XSS dengan multiple payload{Fore.CYAN}                   │
-    │  {Fore.GREEN}•{Fore.WHITE} Scan DOM-based XSS (source & sink analysis){Fore.CYAN}                  │
-    │  {Fore.GREEN}•{Fore.WHITE} Bypass captcha Google dengan ScraperAPI{Fore.CYAN}                      │
+    │  {Fore.GREEN}•{Fore.WHITE} Pencarian Google menggunakan dork query{Fore.CYAN}                         │
+    │  {Fore.GREEN}•{Fore.WHITE} Multi-threaded scanning untuk performa lebih cepat{Fore.CYAN}              │
+    │  {Fore.GREEN}•{Fore.WHITE} Scan SQL Injection (MySQL, PostgreSQL, MSSQL, dll){Fore.CYAN}              │
+    │  {Fore.GREEN}•{Fore.WHITE} Scan Reflected XSS dengan multiple payload{Fore.CYAN}                      │
+    │  {Fore.GREEN}•{Fore.WHITE} Scan DOM-based XSS (source & sink analysis){Fore.CYAN}                     │
+    │  {Fore.GREEN}•{Fore.WHITE} Bypass captcha Google dengan ScraperAPI{Fore.CYAN}                         │
     │                                                                    │
     ├────────────────────────────────────────────────────────────────────┤
     │  {Fore.RED}DISCLAIMER:{Fore.CYAN}                                                       │
-    │  {Fore.WHITE}Tool ini hanya untuk keperluan edukasi dan security research.{Fore.CYAN}    │
-    │  {Fore.WHITE}Pastikan Anda memiliki izin sebelum melakukan testing.{Fore.CYAN}           │
+    │  {Fore.WHITE}Tool ini hanya untuk keperluan edukasi dan security research.{Fore.CYAN}     │
+    │  {Fore.WHITE}Pastikan Anda memiliki izin sebelum melakukan testing.{Fore.CYAN}            │
     │                                                                    │
     ├────────────────────────────────────────────────────────────────────┤
     │  {Fore.MAGENTA}Version: {Fore.WHITE}2.2{Fore.CYAN}                                                      │
