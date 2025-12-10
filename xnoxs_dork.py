@@ -173,12 +173,12 @@ def clear_screen():
 def print_banner():
     banner = f"""
 {Fore.CYAN}╔════════════════════════════════════════════════════════════════════════════════╗
-{Fore.CYAN}║{Fore.RED}  ██╗  ██╗███╗   ██╗ ██████╗ ██╗  ██╗███████╗  {Fore.MAGENTA}██████╗  ██████╗ ██████╗ ██╗  ██╗  {Fore.CYAN}║
-{Fore.CYAN}║{Fore.RED}  ╚██╗██╔╝████╗  ██║██╔═══██╗╚██╗██╔╝██╔════╝  {Fore.MAGENTA}██╔══██╗██╔═══██╗██╔══██╗██║ ██╔╝  {Fore.CYAN}║
-{Fore.CYAN}║{Fore.RED}   ╚███╔╝ ██╔██╗ ██║██║   ██║ ╚███╔╝ ███████╗  {Fore.MAGENTA}██║  ██║██║   ██║██████╔╝█████╔╝   {Fore.CYAN}║
-{Fore.CYAN}║{Fore.RED}   ██╔██╗ ██║╚██╗██║██║   ██║ ██╔██╗ ╚════██║  {Fore.MAGENTA}██║  ██║██║   ██║██╔══██╗██╔═██╗   {Fore.CYAN}║
-{Fore.CYAN}║{Fore.RED}  ██╔╝ ██╗██║ ╚████║╚██████╔╝██╔╝ ██╗███████║  {Fore.MAGENTA}██████╔╝╚██████╔╝██║  ██║██║  ██╗  {Fore.CYAN}║
-{Fore.CYAN}║{Fore.RED}  ╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝  {Fore.MAGENTA}╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  {Fore.CYAN}║
+{Fore.CYAN}║{Fore.RED}  ██╗  ██╗███╗   ██╗ ██████╗ ██╗  ██╗███████╗  {Fore.MAGENTA}██████╗  ██████╗ ██████╗ ██╗  ██╗{Fore.CYAN}║
+{Fore.CYAN}║{Fore.RED}  ╚██╗██╔╝████╗  ██║██╔═══██╗╚██╗██╔╝██╔════╝  {Fore.MAGENTA}██╔══██╗██╔═══██╗██╔══██╗██║ ██╔ {Fore.CYAN}║
+{Fore.CYAN}║{Fore.RED}   ╚███╔╝ ██╔██╗ ██║██║   ██║ ╚███╔╝ ███████╗  {Fore.MAGENTA}██║  ██║██║   ██║██████╔╝█████╔╝ {Fore.CYAN}║
+{Fore.CYAN}║{Fore.RED}   ██╔██╗ ██║╚██╗██║██║   ██║ ██╔██╗ ╚════██║  {Fore.MAGENTA}██║  ██║██║   ██║██╔══██╗██╔═██╗ {Fore.CYAN}║
+{Fore.CYAN}║{Fore.RED}  ██╔╝ ██╗██║ ╚████║╚██████╔╝██╔╝ ██╗███████║  {Fore.MAGENTA}██████╔╝╚██████╔╝██║  ██║██║  ██╗{Fore.CYAN}║
+{Fore.CYAN}║{Fore.RED}  ╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝  {Fore.MAGENTA}╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝{Fore.CYAN}║
 {Fore.CYAN}╠════════════════════════════════════════════════════════════════════════════════╣
 {Fore.CYAN}║{Fore.WHITE}            SQLi & XSS Vulnerability Scanner v2.2 [Multi-threaded]              {Fore.CYAN}║
 {Fore.CYAN}║{Fore.GREEN}                      For Security Research Purposes Only                       {Fore.CYAN}║
@@ -193,15 +193,15 @@ def print_menu():
     menu = f"""
     {Fore.CYAN}┌────────────────────────────────────────────────────────────────────┐
     │                                                                    │
-    │  {Fore.YELLOW}[1]{Fore.WHITE} ◆  Scan dengan Google Dork (Multi-threaded)                 {Fore.CYAN}│
-    │  {Fore.YELLOW}[2]{Fore.WHITE} ◆  Scan URL Tunggal                                         {Fore.CYAN}│
-    │  {Fore.YELLOW}[3]{Fore.WHITE} ◆  Lihat Hasil Vulnerability                                {Fore.CYAN}│
-    │  {Fore.YELLOW}[4]{Fore.WHITE} ◆  Pengaturan                                               {Fore.CYAN}│
-    │  {Fore.YELLOW}[5]{Fore.WHITE} ◆  Tentang Tool                                             {Fore.CYAN}│
-    │  {Fore.YELLOW}[0]{Fore.WHITE} ◆  Keluar                                                   {Fore.CYAN}│
+    │  {Fore.YELLOW}[1]{Fore.WHITE} ◆  Scan dengan Google Dork (Multi-threaded)                   {Fore.CYAN}│
+    │  {Fore.YELLOW}[2]{Fore.WHITE} ◆  Scan URL Tunggal                                           {Fore.CYAN}│
+    │  {Fore.YELLOW}[3]{Fore.WHITE} ◆  Lihat Hasil Vulnerability                                  {Fore.CYAN}│
+    │  {Fore.YELLOW}[4]{Fore.WHITE} ◆  Pengaturan                                                 {Fore.CYAN}│
+    │  {Fore.YELLOW}[5]{Fore.WHITE} ◆  Tentang Tool                                               {Fore.CYAN}│
+    │  {Fore.YELLOW}[0]{Fore.WHITE} ◆  Keluar                                                     {Fore.CYAN}│
     │                                                                    │
     ├────────────────────────────────────────────────────────────────────┤
-    │  {Fore.MAGENTA}Threads: {Fore.WHITE}{settings['threads']}  {Fore.CYAN}│  {Fore.MAGENTA}Timeout: {Fore.WHITE}{settings['timeout']}s  {Fore.CYAN}│  {Fore.MAGENTA}Results: {Fore.WHITE}{settings['num_results']}  {Fore.CYAN}│  {Fore.MAGENTA}API: {api_status}   {Fore.CYAN}│
+    │  {Fore.MAGENTA}Threads: {Fore.WHITE}{settings['threads']}  {Fore.CYAN}│  {Fore.MAGENTA}Timeout: {Fore.WHITE}{settings['timeout']}s  {Fore.CYAN}│  {Fore.MAGENTA}Results: {Fore.WHITE}{settings['num_results']}  {Fore.CYAN}│  {Fore.MAGENTA}API: {api_status}      {Fore.CYAN}│
     └────────────────────────────────────────────────────────────────────┘
 {Style.RESET_ALL}"""
     print(menu)
