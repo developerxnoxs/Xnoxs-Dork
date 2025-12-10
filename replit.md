@@ -1,16 +1,40 @@
-# XNOXS DORK - SQL Injection & XSS Vulnerability Scanner
+# XNOXS DORK - Multi-Vulnerability Scanner
 
 ## Overview
-Tool untuk mendeteksi kerentanan SQL Injection dan XSS (Cross-Site Scripting) dengan fitur Google Dork scanning, multi-threading, dan advanced URL filtering.
+Tool komprehensif untuk mendeteksi berbagai kerentanan keamanan termasuk SQL Injection, XSS, LFI, dan RCE menggunakan Google Dork scanning, multi-threading, dan advanced URL filtering.
 
 ## Fitur Utama
-- SQL Injection Detection (Error-based, Boolean-based Blind, Time-based Blind)
-- XSS Detection (Reflected XSS, DOM-based XSS)
+- **SQL Injection Detection** (Error-based, Boolean-based Blind, Time-based Blind)
+- **XSS Detection** (Reflected XSS, DOM-based XSS)
+- **LFI Detection** (Local File Inclusion) - Path Traversal, Null Byte Injection
+- **RCE Detection** (Remote Code Execution) - Command Injection untuk Linux & Windows
 - Google Dork Scanning dengan ScraperAPI
 - Multi-threaded scanning
 - **Advanced URL Filtering System** - Filter otomatis domain yang tidak relevan
+- **Sample Dorks Library** - Koleksi dorks untuk SQLi, XSS, LFI, RCE
 - Export ke JSON, CSV, HTML
 - Interactive CLI dan Command-line mode
+
+## Vulnerability Types
+
+### SQL Injection (Critical)
+- Error-based SQLi
+- Boolean-based Blind SQLi
+- Time-based Blind SQLi
+
+### XSS - Cross-Site Scripting (High)
+- Reflected XSS
+- DOM-based XSS
+
+### LFI - Local File Inclusion (Critical)
+- Path Traversal (../../etc/passwd)
+- Null Byte Injection
+- PHP Wrapper Attacks
+
+### RCE - Remote Code Execution (Critical)
+- Command Injection (Linux: ; | && etc)
+- Command Injection (Windows: & | etc)
+- Code Execution via system functions
 
 ## Advanced URL Filter System
 
@@ -75,6 +99,28 @@ python xnoxs_dork.py -d "inurl:php?id=" --exclude-domain unwanted.com
 python xnoxs_dork.py -d "inurl:php?id=" --filter-config filter_config.json
 ```
 
+## Sample Dorks Library
+
+### SQL Injection Dorks
+- `inurl:php?id=`
+- `inurl:product.php?cat=`
+- `inurl:news.php?id=`
+
+### XSS Dorks
+- `inurl:search.php?q=`
+- `inurl:query= filetype:php`
+- `inurl:msg= filetype:php`
+
+### LFI Dorks
+- `inurl:page= filetype:php`
+- `inurl:file= filetype:php`
+- `inurl:include= filetype:php`
+
+### RCE Dorks
+- `inurl:cmd= filetype:php`
+- `inurl:exec= filetype:php`
+- `inurl:shell= filetype:php`
+
 ## File Konfigurasi Filter (filter_config.json)
 ```json
 {
@@ -103,4 +149,9 @@ python xnoxs_dork.py -d "inurl:php?id=" --filter-config filter_config.json
 - SearchEngine
 
 ## Recent Changes
+- 2024-12: Added LFI (Local File Inclusion) detection with path traversal payloads
+- 2024-12: Added RCE (Remote Code Execution) detection with command injection payloads
+- 2024-12: Added Sample Dorks Library with SQLi, XSS, LFI, RCE categories
+- 2024-12: Updated all export formats (JSON, CSV, HTML) to include LFI/RCE results
+- 2024-12: Enhanced multi-threaded scanning to include all 6 vulnerability types
 - 2024: Upgraded URL filter ke Advanced version dengan 8 kategori, pattern matching, whitelist, dan CLI options
