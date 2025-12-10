@@ -1746,14 +1746,15 @@ def search_dork(dork, num_results=100, engine="google"):
         results_per_page = 10
         total_pages = (num_results + results_per_page - 1) // results_per_page
         
+        scraper_api_key = os.environ.get("SCRAPER_API_KEY", "1820c54a47ebf6d3557d9be57aa70c81")
+        
         if engine == "google":
-            scraper_api_key = os.environ.get("SCRAPER_API_KEY", "1820c54a47ebf6d3557d9be57aa70c81")
-            print_info(f"Menggunakan {Fore.GREEN}Google{Style.RESET_ALL} dengan ScraperAPI untuk bypass captcha...")
+            print_info(f"Menggunakan {Fore.GREEN}Google{Style.RESET_ALL} dengan ScraperAPI...")
             search = GoogleSearch(scraper_api_key=scraper_api_key)
             engine_name = "Google"
         elif engine == "duckduckgo":
-            print_info(f"Menggunakan {Fore.YELLOW}DuckDuckGo{Style.RESET_ALL} (tanpa proxy)...")
-            search = DuckDuckGoSearch()
+            print_info(f"Menggunakan {Fore.YELLOW}DuckDuckGo{Style.RESET_ALL} dengan ScraperAPI...")
+            search = DuckDuckGoSearch(scraper_api_key=scraper_api_key)
             engine_name = "DuckDuckGo"
         else:
             print_error(f"Mesin pencari tidak dikenal: {engine}")
@@ -1801,8 +1802,8 @@ def select_search_engine():
     {Fore.CYAN}╔════════════════════════════════════════════════════════════════════╗
     ║  {Fore.YELLOW}◆  PILIH MESIN PENCARI{Fore.CYAN}                                            ║
     ╠════════════════════════════════════════════════════════════════════╣
-    ║  {Fore.YELLOW}[1]{Fore.WHITE} Google       {Fore.GREEN}(dengan ScraperAPI - lebih akurat){Fore.CYAN}              ║
-    ║  {Fore.YELLOW}[2]{Fore.WHITE} DuckDuckGo   {Fore.YELLOW}(tanpa proxy - lebih cepat){Fore.CYAN}                    ║
+    ║  {Fore.YELLOW}[1]{Fore.WHITE} Google       {Fore.GREEN}(dengan ScraperAPI){Fore.CYAN}                            ║
+    ║  {Fore.YELLOW}[2]{Fore.WHITE} DuckDuckGo   {Fore.GREEN}(dengan ScraperAPI){Fore.CYAN}                            ║
     ╚════════════════════════════════════════════════════════════════════╝
 {Style.RESET_ALL}""")
     
