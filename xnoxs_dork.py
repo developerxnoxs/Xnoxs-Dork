@@ -165,6 +165,36 @@ settings = {
     'threads': 5
 }
 
+EXCLUDED_DOMAINS = [
+    'stackoverflow.com',
+    'github.com',
+    'gitlab.com',
+    'github.io',
+    'gitlab.io',
+    'gist.github.com',
+    'raw.githubusercontent.com',
+]
+
+def is_excluded_domain(url):
+    """Check if URL belongs to an excluded domain."""
+    try:
+        parsed = urllib.parse.urlparse(url)
+        domain = parsed.netloc.lower()
+        for excluded in EXCLUDED_DOMAINS:
+            if domain == excluded or domain.endswith('.' + excluded):
+                return True
+        return False
+    except:
+        return False
+
+def filter_urls(urls):
+    """Filter out URLs from excluded domains."""
+    filtered = [url for url in urls if not is_excluded_domain(url)]
+    excluded_count = len(urls) - len(filtered)
+    if excluded_count > 0:
+        print_warning(f"Filtered {excluded_count} URL dari domain yang di-exclude (stackoverflow/github/gitlab)")
+    return filtered
+
 all_vulnerabilities = []
 all_xss_vulnerabilities = []
 all_dom_xss_vulnerabilities = []
@@ -355,7 +385,9 @@ def import_urls_from_file(filepath):
                     if not url.startswith(('http://', 'https://')):
                         url = 'http://' + url
                     urls.append(url)
-        return list(dict.fromkeys(urls))
+        urls = list(dict.fromkeys(urls))
+        urls = filter_urls(urls)
+        return urls
     except FileNotFoundError:
         return None
     except Exception as e:
@@ -936,7 +968,9 @@ def search_dork(dork, num_results=100):
                 print_warning(f"Halaman {page} error: {str(e)}")
                 continue
         
-        urls = list(dict.fromkeys(urls))[:num_results]
+        urls = list(dict.fromkeys(urls))
+        urls = filter_urls(urls)
+        urls = urls[:num_results]
         
         print_success(f"Total ditemukan {Fore.YELLOW}{len(urls)}{Style.RESET_ALL} URL unik")
         return urls
