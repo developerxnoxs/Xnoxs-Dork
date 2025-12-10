@@ -653,18 +653,56 @@ LFI_PAYLOADS = [
 ]
 
 LFI_DETECTION_PATTERNS = {
-    'Linux': [
+    'Linux /etc/passwd': [
         r'root:.*:0:0:',
+        r'root:x:0:0:',
         r'daemon:.*:1:1:',
         r'bin:.*:2:2:',
         r'sys:.*:3:3:',
         r'nobody:.*:65534:',
+        r'www-data:.*:33:33:',
+        r'apache:.*:48:48:',
+        r'nginx:.*:\d+:\d+:',
+        r'mysql:.*:\d+:\d+:',
+        r'postgres:.*:\d+:\d+:',
+        r'[a-z_][a-z0-9_-]*:x:\d+:\d+:',
         r'/bin/bash',
         r'/bin/sh',
-        r'Linux version',
         r'/usr/sbin/nologin',
+        r'/sbin/nologin',
+        r'/bin/false',
     ],
-    'Windows': [
+    'Linux /etc/shadow': [
+        r'root:\$[0-9a-z]+\$',
+        r'root:!:',
+        r'root:\*:',
+        r'[a-z_][a-z0-9_-]*:\$[156]\$[a-zA-Z0-9./]+:\d+:',
+        r'[a-z_][a-z0-9_-]*:!:\d+:\d+:',
+    ],
+    'Linux /etc/hosts': [
+        r'127\.0\.0\.1\s+localhost',
+        r'::1\s+localhost',
+        r'127\.0\.1\.1\s+',
+    ],
+    'Linux /etc/group': [
+        r'root:x:0:',
+        r'daemon:x:1:',
+        r'www-data:x:33:',
+        r'sudo:x:\d+:',
+        r'adm:x:\d+:',
+    ],
+    'Linux /proc': [
+        r'Linux version \d+\.\d+',
+        r'BOOT_IMAGE=',
+        r'HOME=/',
+        r'PATH=/',
+        r'USER=www-data',
+        r'USER=apache',
+        r'DOCUMENT_ROOT=',
+        r'SERVER_SOFTWARE=',
+        r'SCRIPT_FILENAME=',
+    ],
+    'Windows win.ini': [
         r'\[extensions\]',
         r'\[fonts\]',
         r'\[mci extensions\]',
@@ -673,10 +711,32 @@ LFI_DETECTION_PATTERNS = {
         r'\[files\]',
         r'MAPI=1',
     ],
-    'Apache Log': [
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}.*GET.*HTTP',
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}.*POST.*HTTP',
-        r'Mozilla/\d\.\d',
+    'Windows boot.ini': [
+        r'\[boot loader\]',
+        r'timeout=\d+',
+        r'default=multi\(',
+        r'\[operating systems\]',
+        r'multi\(0\)disk\(0\)',
+    ],
+    'Windows hosts': [
+        r'127\.0\.0\.1\s+localhost',
+        r'::1\s+localhost',
+        r'# Copyright \(c\) 1993-',
+    ],
+    'Windows SAM': [
+        r'Administrator:500:',
+        r'Guest:501:',
+        r'IUSR_',
+        r'IWAM_',
+    ],
+    'Apache/Nginx Log': [
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\s+-\s+-\s+\[',
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}.*"GET.*HTTP',
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}.*"POST.*HTTP',
+        r'Mozilla/\d+\.\d+',
+        r'\[error\].*PHP',
+        r'\[warn\]',
+        r'\[notice\]',
     ],
     'PHP Source': [
         r'<\?php',
@@ -684,24 +744,38 @@ LFI_DETECTION_PATTERNS = {
         r'\$_GET\[',
         r'\$_POST\[',
         r'\$_REQUEST\[',
+        r'\$_SESSION\[',
+        r'\$_COOKIE\[',
+        r'\$_SERVER\[',
         r'include\s*\(',
         r'require\s*\(',
         r'include_once\s*\(',
         r'require_once\s*\(',
+        r'function\s+\w+\s*\(',
+        r'class\s+\w+\s*\{',
     ],
-    'Config File': [
+    'Config Files': [
         r'DB_HOST\s*=',
+        r'DB_NAME\s*=',
         r'DB_USER\s*=',
+        r'DB_PASSWORD\s*=',
         r'DB_PASS\s*=',
-        r'database.*password',
-        r'mysql_connect\s*\(',
+        r'database_host',
+        r'database_name',
+        r'database_user',
         r'mysqli_connect\s*\(',
+        r'mysql_connect\s*\(',
+        r'PDO\s*\(',
+        r'define\s*\(\s*[\'"]DB_',
+        r'\$db\s*=\s*[\'"]',
+        r'password\s*[\'"]?\s*[:=]\s*[\'"]',
     ],
-    'Proc Info': [
-        r'DOCUMENT_ROOT=',
-        r'HTTP_HOST=',
-        r'SERVER_SOFTWARE=',
-        r'PATH=/',
+    'SSH Keys': [
+        r'-----BEGIN (RSA |DSA |EC |OPENSSH )?PRIVATE KEY-----',
+        r'-----BEGIN RSA PRIVATE KEY-----',
+        r'ssh-rsa AAAA',
+        r'ssh-dss AAAA',
+        r'ssh-ed25519 AAAA',
     ],
 }
 
@@ -792,19 +866,59 @@ RCE_PAYLOADS = [
 
 RCE_DETECTION_PATTERNS = [
     r'uid=\d+\([a-zA-Z0-9_-]+\)\s+gid=\d+',
+    r'uid=\d+\s+gid=\d+',
+    r'uid=\d+',
     r'root:.*:0:0:',
+    r'root:x:0:0:',
+    r'www-data',
+    r'apache',
+    r'nginx',
+    r'nobody',
     r'Linux\s+\S+\s+\d+\.\d+',
+    r'Linux\s+version\s+\d+',
     r'Darwin\s+\S+\s+\d+\.\d+',
     r'FreeBSD\s+\S+\s+\d+\.\d+',
+    r'Ubuntu',
+    r'Debian',
+    r'CentOS',
+    r'Red Hat',
+    r'Fedora',
     r'total\s+\d+',
     r'drwx[rwx-]{6}',
     r'-rw[rwx-]{7}',
+    r'lrwx[rwx-]{6}',
+    r'd[rwx-]{9}',
+    r'-[rwx-]{9}',
     r'XNOXS_RCE_TEST',
     r'bytes from 127\.0\.0\.1',
+    r'bytes from localhost',
+    r'\d+ bytes from',
+    r'64 bytes from',
+    r'Reply from 127\.0\.0\.1',
     r'<DIR>\s+\.',
     r'\[extensions\]',
     r'Volume in drive',
     r'Directory of',
+    r'Windows IP Configuration',
+    r'Ethernet adapter',
+    r'IPv4 Address',
+    r'Default Gateway',
+    r'Microsoft Windows',
+    r'curl \d+\.\d+',
+    r'wget \d+\.\d+',
+    r'GNU Wget',
+    r'/var/www',
+    r'/home/',
+    r'/usr/',
+    r'/bin/',
+    r'/tmp/',
+    r'/root/',
+    r'C:\\\\Windows',
+    r'C:\\\\Users',
+    r'C:\\\\Program Files',
+    r'bin/bash',
+    r'bin/sh',
+    r'sbin/nologin',
 ]
 
 SAMPLE_DORKS = {
@@ -1504,32 +1618,69 @@ def scan_xss(url, timeout=10, silent=False):
     return xss_vulns
 
 
+def normalize_response(response_text):
+    """Normalize response text by decoding HTML entities and base64."""
+    import base64
+    
+    normalized = html.unescape(response_text)
+    
+    normalized = normalized.replace('&lt;', '<').replace('&gt;', '>')
+    normalized = normalized.replace('&#60;', '<').replace('&#62;', '>')
+    normalized = normalized.replace('&amp;', '&').replace('&quot;', '"')
+    normalized = normalized.replace('&#039;', "'").replace('&apos;', "'")
+    
+    base64_pattern = r'([A-Za-z0-9+/]{20,}={0,2})'
+    base64_matches = re.findall(base64_pattern, normalized)
+    
+    decoded_parts = []
+    for b64_str in base64_matches:
+        try:
+            if len(b64_str) % 4 == 0:
+                decoded = base64.b64decode(b64_str).decode('utf-8', errors='ignore')
+                if decoded and any(c.isalpha() for c in decoded):
+                    decoded_parts.append(decoded)
+        except:
+            pass
+    
+    full_text = normalized + '\n' + '\n'.join(decoded_parts)
+    return full_text
+
+
 def detect_lfi(response_text):
     """Detect LFI vulnerability from response."""
+    normalized = normalize_response(response_text)
+    
     for file_type, patterns in LFI_DETECTION_PATTERNS.items():
         for pattern in patterns:
-            match = re.search(pattern, response_text, re.IGNORECASE)
+            match = re.search(pattern, normalized, re.IGNORECASE | re.MULTILINE)
             if match:
                 start = max(0, match.start() - 30)
-                end = min(len(response_text), match.end() + 50)
-                snippet = response_text[start:end].strip()
+                end = min(len(normalized), match.end() + 50)
+                snippet = normalized[start:end].strip()
                 snippet = re.sub(r'<[^>]+>', '', snippet)
+                snippet = ' '.join(snippet.split())
                 return file_type, snippet
     return None, None
 
 
 def detect_rce(response_text, expected_output=None):
     """Detect RCE vulnerability from response."""
-    if expected_output and expected_output in response_text:
-        return True, expected_output
+    normalized = normalize_response(response_text)
+    
+    if expected_output:
+        if expected_output in normalized:
+            return True, expected_output
+        if expected_output.lower() in normalized.lower():
+            return True, expected_output
     
     for pattern in RCE_DETECTION_PATTERNS:
-        match = re.search(pattern, response_text, re.IGNORECASE)
+        match = re.search(pattern, normalized, re.IGNORECASE | re.MULTILINE)
         if match:
             start = max(0, match.start() - 20)
-            end = min(len(response_text), match.end() + 50)
-            snippet = response_text[start:end].strip()
+            end = min(len(normalized), match.end() + 50)
+            snippet = normalized[start:end].strip()
             snippet = re.sub(r'<[^>]+>', '', snippet)
+            snippet = ' '.join(snippet.split())
             return True, snippet
     
     return False, None
@@ -1568,7 +1719,7 @@ def scan_lfi(url, timeout=10, silent=False):
     lfi_vulns = []
     tested_params = set()
     
-    for payload in LFI_PAYLOADS[:15]:
+    for payload in LFI_PAYLOADS[:30]:
         injected_urls = inject_lfi_payload(url, payload)
         
         for param_name, injected_url, used_payload in injected_urls:
@@ -1637,7 +1788,7 @@ def scan_rce(url, timeout=10, silent=False):
     rce_vulns = []
     tested_params = set()
     
-    for payload, expected_output in RCE_PAYLOADS[:15]:
+    for payload, expected_output in RCE_PAYLOADS[:25]:
         injected_urls = inject_rce_payload(url, payload)
         
         for param_name, injected_url in injected_urls:
