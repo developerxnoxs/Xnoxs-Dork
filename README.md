@@ -1,6 +1,6 @@
 # XNOXS DORK
 
-SQLi & XSS Vulnerability Scanner v2.2 [Multi-threaded]
+SQLi & XSS Vulnerability Scanner v3.0 [Multi-threaded]
 
 ## Deskripsi
 
@@ -22,14 +22,25 @@ SQL Injection adalah teknik serangan yang memanfaatkan celah keamanan pada aplik
 4. Database mengeksekusi query yang sudah dimodifikasi
 5. Penyerang mendapatkan akses ke data yang seharusnya tidak bisa diakses
 
-### Contoh Serangan
-```
-URL Normal:
-https://example.com/product.php?id=1
+### Jenis SQL Injection
 
-URL dengan SQLi:
-https://example.com/product.php?id=1' OR '1'='1'--
-https://example.com/product.php?id=1 UNION SELECT username,password FROM users--
+#### Error-based SQLi
+Memanfaatkan pesan error database yang ditampilkan untuk mengekstrak informasi.
+```
+https://example.com/product.php?id=1'
+```
+
+#### Blind SQL Injection (Boolean-based)
+Tidak menampilkan error, tapi response berbeda berdasarkan true/false condition.
+```
+https://example.com/product.php?id=1' AND '1'='1  (response normal)
+https://example.com/product.php?id=1' AND '1'='2  (response berbeda)
+```
+
+#### Time-based Blind SQLi
+Menggunakan delay untuk mendeteksi vulnerability.
+```
+https://example.com/product.php?id=1' AND SLEEP(5)--
 ```
 
 ### Dampak SQL Injection
@@ -112,22 +123,6 @@ element.href
 jQuery.html()
 ```
 
-### Contoh Serangan
-```
-URL Normal:
-https://example.com/page#section1
-
-URL dengan DOM XSS:
-https://example.com/page#<img src=x onerror=alert(document.cookie)>
-```
-
-### Kode Rentan
-```javascript
-// Vulnerable code
-var hash = location.hash.substring(1);
-document.getElementById('content').innerHTML = hash;
-```
-
 ### Dampak DOM XSS
 - **Sama dengan Reflected XSS** - Session hijacking, credential theft, dll
 - **Sulit Dideteksi** - Tidak ada jejak di server logs
@@ -151,12 +146,15 @@ document.getElementById('content').innerHTML = hash;
 ## Fitur Tool
 
 - **Google Dork Scanner** - Mencari target URL menggunakan Google Dork dengan pagination (hingga 100+ URL)
-- **SQL Injection Detection** - Mendeteksi kerentanan SQLi pada berbagai database (MySQL, PostgreSQL, MSSQL, Oracle, SQLite, dll)
+- **SQL Injection Detection** - Mendeteksi kerentanan SQLi (Error-based & Blind)
+- **Blind SQLi Detection** - Boolean-based dan Time-based blind injection
 - **Reflected XSS Detection** - Mendeteksi kerentanan Reflected XSS dengan berbagai payload
 - **DOM-based XSS Detection** - Analisis source & sink untuk mendeteksi DOM XSS
 - **Multi-threaded Scanning** - Scanning paralel untuk performa lebih cepat
+- **Import URL dari File** - Scan batch URL dari file txt
+- **Export Hasil** - Export ke JSON, CSV, atau HTML Report
+- **CLI Mode** - Jalankan dari command line dengan arguments
 - **ScraperAPI Integration** - Bypass Google captcha untuk hasil pencarian yang lebih andal
-- **Export Results** - Simpan hasil vulnerability ke file
 
 ---
 
@@ -165,7 +163,7 @@ document.getElementById('content').innerHTML = hash;
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/yourusername/xnoxs-dork.git
+git clone https://github.com/developerxnoxs/xnoxs-dork.git
 cd xnoxs-dork
 ```
 
@@ -179,7 +177,7 @@ pip install -r requirements.txt
 
 ## Penggunaan
 
-### Jalankan Tool
+### Interactive Mode
 
 ```bash
 python xnoxs_dork.py
@@ -190,11 +188,47 @@ python xnoxs_dork.py
 ```
 [1] Scan dengan Google Dork (Multi-threaded)
 [2] Scan URL Tunggal
-[3] Lihat Hasil Vulnerability
-[4] Pengaturan
-[5] Tentang Tool
+[3] Scan URL dari File
+[4] Lihat Hasil Vulnerability
+[5] Export Hasil
+[6] Pengaturan
+[7] Tentang Tool
 [0] Keluar
 ```
+
+### CLI Mode
+
+```bash
+# Scan single URL
+python xnoxs_dork.py -u "http://example.com/page.php?id=1"
+
+# Scan dari file
+python xnoxs_dork.py -f urls.txt
+
+# Scan dengan Google Dork
+python xnoxs_dork.py -d "inurl:php?id="
+
+# Dengan output file
+python xnoxs_dork.py -u "http://example.com/?id=1" -o results.json
+
+# Custom threads dan timeout
+python xnoxs_dork.py -f urls.txt -t 10 --timeout 15
+
+# Lihat bantuan
+python xnoxs_dork.py --help
+```
+
+### CLI Arguments
+
+| Argument | Deskripsi |
+|----------|-----------|
+| `-u, --url` | Single URL untuk scan |
+| `-f, --file` | File berisi daftar URL |
+| `-d, --dork` | Google dork query |
+| `-o, --output` | Output file (json/csv/html) |
+| `-t, --threads` | Jumlah thread (default: 5) |
+| `--timeout` | Request timeout dalam detik (default: 10) |
+| `-r, --results` | Max hasil dari dork (default: 100) |
 
 ### Contoh Google Dork
 
@@ -204,7 +238,47 @@ inurl:product.php?id=
 site:example.com inurl:?id=
 inurl:index.php?page=
 inurl:article.php?id=
+inurl:news.php?id=
+inurl:item.php?id=
 ```
+
+### Format File URL
+
+```
+# Contoh urls.txt
+http://example1.com/page.php?id=1
+http://example2.com/product.php?cat=5
+https://example3.com/news.php?id=10
+# Baris dengan # akan diabaikan
+```
+
+---
+
+## Export Hasil
+
+Tool ini mendukung export hasil ke 3 format:
+
+### JSON
+```json
+{
+  "scan_date": "2024-01-15T10:30:00",
+  "total_vulnerabilities": {
+    "sqli": 5,
+    "blind_sqli": 2,
+    "xss": 3,
+    "dom_xss": 1
+  },
+  "sql_injection": [...],
+  "reflected_xss": [...],
+  "dom_xss": [...]
+}
+```
+
+### CSV
+Format tabel dengan kolom: Type, URL, Parameter, Details, Severity
+
+### HTML Report
+Report visual dengan styling modern, mudah dibaca dan di-share.
 
 ---
 
@@ -254,10 +328,27 @@ Tool ini dibuat HANYA untuk tujuan edukasi dan penelitian keamanan yang sah.
 
 ---
 
+## Changelog
+
+### v3.0
+- Tambah Blind SQL Injection detection (Boolean-based)
+- Tambah Time-based SQL Injection detection
+- Tambah fitur Import URL dari file
+- Tambah fitur Export ke JSON/CSV/HTML
+- Tambah CLI mode dengan arguments
+- Update menu dan UI
+
+### v2.2
+- Multi-threaded scanning
+- DOM-based XSS detection
+- ScraperAPI integration
+
+---
+
 ## Lisensi
 
 MIT License
 
 ## Author
 
-XNOXS Team
+XNOXS Team - github.com/developerxnoxs
