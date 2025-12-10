@@ -172,17 +172,17 @@ def clear_screen():
 
 def print_banner():
     banner = f"""
-{Fore.RED}    ██╗  ██╗███╗   ██╗ ██████╗ ██╗  ██╗███████╗    {Fore.MAGENTA}██████╗  ██████╗ ██████╗ ██╗  ██╗
-{Fore.RED}    ╚██╗██╔╝████╗  ██║██╔═══██╗╚██╗██╔╝██╔════╝    {Fore.MAGENTA}██╔══██╗██╔═══██╗██╔══██╗██║ ██╔╝
-{Fore.RED}     ╚███╔╝ ██╔██╗ ██║██║   ██║ ╚███╔╝ ███████╗    {Fore.MAGENTA}██║  ██║██║   ██║██████╔╝█████╔╝
-{Fore.RED}     ██╔██╗ ██║╚██╗██║██║   ██║ ██╔██╗ ╚════██║    {Fore.MAGENTA}██║  ██║██║   ██║██╔══██╗██╔═██╗
-{Fore.RED}    ██╔╝ ██╗██║ ╚████║╚██████╔╝██╔╝ ██╗███████║    {Fore.MAGENTA}██████╔╝╚██████╔╝██║  ██║██║  ██╗
-{Fore.RED}    ╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝    {Fore.MAGENTA}╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝
-
-{Fore.CYAN}    ══════════════════════════════════════════════════════════════════════
-{Fore.WHITE}          SQLi & XSS Vulnerability Scanner v2.2 [Multi-threaded]
-{Fore.GREEN}                    For Security Research Purposes Only
-{Fore.CYAN}    ══════════════════════════════════════════════════════════════════════
+{Fore.CYAN}╔════════════════════════════════════════════════════════════════════════════════╗
+{Fore.CYAN}║{Fore.RED}  ██╗  ██╗███╗   ██╗ ██████╗ ██╗  ██╗███████╗  {Fore.MAGENTA}██████╗  ██████╗ ██████╗ ██╗  ██╗  {Fore.CYAN}║
+{Fore.CYAN}║{Fore.RED}  ╚██╗██╔╝████╗  ██║██╔═══██╗╚██╗██╔╝██╔════╝  {Fore.MAGENTA}██╔══██╗██╔═══██╗██╔══██╗██║ ██╔╝  {Fore.CYAN}║
+{Fore.CYAN}║{Fore.RED}   ╚███╔╝ ██╔██╗ ██║██║   ██║ ╚███╔╝ ███████╗  {Fore.MAGENTA}██║  ██║██║   ██║██████╔╝█████╔╝   {Fore.CYAN}║
+{Fore.CYAN}║{Fore.RED}   ██╔██╗ ██║╚██╗██║██║   ██║ ██╔██╗ ╚════██║  {Fore.MAGENTA}██║  ██║██║   ██║██╔══██╗██╔═██╗   {Fore.CYAN}║
+{Fore.CYAN}║{Fore.RED}  ██╔╝ ██╗██║ ╚████║╚██████╔╝██╔╝ ██╗███████║  {Fore.MAGENTA}██████╔╝╚██████╔╝██║  ██║██║  ██╗  {Fore.CYAN}║
+{Fore.CYAN}║{Fore.RED}  ╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝  {Fore.MAGENTA}╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  {Fore.CYAN}║
+{Fore.CYAN}╠════════════════════════════════════════════════════════════════════════════════╣
+{Fore.CYAN}║{Fore.WHITE}            SQLi & XSS Vulnerability Scanner v2.2 [Multi-threaded]              {Fore.CYAN}║
+{Fore.CYAN}║{Fore.GREEN}                      For Security Research Purposes Only                       {Fore.CYAN}║
+{Fore.CYAN}╚════════════════════════════════════════════════════════════════════════════════╝
 {Style.RESET_ALL}"""
     print(banner)
 
