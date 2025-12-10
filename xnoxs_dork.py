@@ -156,7 +156,7 @@ SQL_ERROR_PATTERNS = {
 }
 
 settings = {
-    'num_results': 10,
+    'num_results': 100,
     'timeout': 10,
     'threads': 5
 }
@@ -192,7 +192,7 @@ def print_banner():
 
 
 def print_menu():
-    api_status = f"{Fore.GREEN}Active" if os.environ.get('SCRAPER_API_KEY') else f"{Fore.RED}Not Set"
+    api_status = f"{Fore.GREEN}Active"
     
     menu = f"""
     {Fore.CYAN}┌────────────────────────────────────────────────────────────────────┐
@@ -579,15 +579,11 @@ def multi_threaded_scan(urls, timeout=10, num_threads=5):
     return results
 
 
-def search_dork(dork, num_results=10):
+def search_dork(dork, num_results=100):
     try:
-        scraper_api_key = os.environ.get('SCRAPER_API_KEY')
-        if scraper_api_key:
-            print_info("Menggunakan ScraperAPI untuk bypass captcha...")
-            search = GoogleSearch(scraper_api_key=scraper_api_key)
-        else:
-            print_warning("ScraperAPI key tidak ditemukan. Google mungkin memblokir request.")
-            search = GoogleSearch()
+        scraper_api_key = "1820c54a47ebf6d3557d9be57aa70c81"
+        print_info("Menggunakan ScraperAPI untuk bypass captcha...")
+        search = GoogleSearch(scraper_api_key=scraper_api_key)
         
         loading_animation("Mencari di Google...", 2)
         results = search.search(dork, num_results=num_results)
@@ -769,7 +765,7 @@ def menu_settings():
         clear_screen()
         print_banner()
         
-        api_status = f"{Fore.GREEN}Active" if os.environ.get('SCRAPER_API_KEY') else f"{Fore.RED}Not Set"
+        api_status = f"{Fore.GREEN}Active"
         
         print(f"""
     {Fore.CYAN}┌────────────────────────────────────────────────────────────────────┐
