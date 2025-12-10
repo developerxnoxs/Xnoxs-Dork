@@ -160,16 +160,49 @@ jQuery.html()
 
 ## Instalasi
 
-### 1. Clone Repository
+### Metode 1: Quick Install (Semua Platform)
 
 ```bash
 git clone https://github.com/developerxnoxs/xnoxs-dork.git
 cd xnoxs-dork
+bash install.sh
 ```
 
-### 2. Install Dependencies
+### Metode 2: Install sebagai Command
 
 ```bash
+git clone https://github.com/developerxnoxs/xnoxs-dork.git
+cd xnoxs-dork
+pip install -e .
+```
+
+Setelah install, jalankan langsung dengan:
+```bash
+xnoxs-dork
+```
+
+### Metode 3: Termux (Android)
+
+```bash
+pkg update && pkg install python git
+git clone https://github.com/developerxnoxs/xnoxs-dork.git
+cd xnoxs-dork
+pip install colorama requests beautifulsoup4
+chmod +x xnoxs-dork
+./xnoxs-dork
+```
+
+Untuk install ke PATH (agar bisa dipanggil dari mana saja):
+```bash
+cp xnoxs-dork xnoxs_dork.py $PREFIX/bin/
+xnoxs-dork
+```
+
+### Metode 4: Manual Install
+
+```bash
+git clone https://github.com/developerxnoxs/xnoxs-dork.git
+cd xnoxs-dork
 pip install -r requirements.txt
 ```
 
@@ -177,7 +210,13 @@ pip install -r requirements.txt
 
 ## Penggunaan
 
-### Interactive Mode
+### Direct Command (Recommended)
+
+```bash
+xnoxs-dork
+```
+
+### Interactive Mode (Alternative)
 
 ```bash
 python xnoxs_dork.py

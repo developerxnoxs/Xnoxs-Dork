@@ -58,7 +58,12 @@ Tool komprehensif untuk mendeteksi berbagai kerentanan keamanan termasuk SQL Inj
 
 ## Penggunaan
 
-### Interactive Mode
+### Direct Command (Recommended)
+```bash
+xnoxs-dork
+```
+
+### Interactive Mode (Alternative)
 ```bash
 python xnoxs_dork.py
 ```
