@@ -162,38 +162,387 @@ SQL_ERROR_PATTERNS = {
 settings = {
     'num_results': 100,
     'timeout': 10,
-    'threads': 5
+    'threads': 5,
+    'filter_enabled': True,
+    'filter_categories': ['code_repos', 'forums', 'docs', 'social', 'search_engines', 'cdn']
 }
 
-EXCLUDED_DOMAINS = [
-    'stackoverflow.com',
-    'github.com',
-    'gitlab.com',
-    'github.io',
-    'gitlab.io',
-    'gist.github.com',
-    'raw.githubusercontent.com',
-]
+DOMAIN_CATEGORIES = {
+    'code_repos': {
+        'name': 'Code Repositories',
+        'domains': [
+            'github.com', 'gitlab.com', 'bitbucket.org', 'sourceforge.net',
+            'github.io', 'gitlab.io', 'gist.github.com', 'raw.githubusercontent.com',
+            'gitee.com', 'codeberg.org', 'sr.ht', 'git.sr.ht',
+            'launchpad.net', 'savannah.gnu.org', 'repo.or.cz',
+            'notabug.org', 'codepen.io', 'jsfiddle.net', 'replit.com',
+            'codesandbox.io', 'stackblitz.com', 'glitch.com',
+        ],
+        'patterns': [
+            r'.*\.github\.io$',
+            r'.*\.gitlab\.io$',
+            r'.*\.bitbucket\.io$',
+        ]
+    },
+    'forums': {
+        'name': 'Forums & Q&A',
+        'domains': [
+            'stackoverflow.com', 'stackexchange.com', 'superuser.com',
+            'serverfault.com', 'askubuntu.com', 'mathoverflow.net',
+            'quora.com', 'reddit.com', 'discourse.org',
+            'community.oracle.com', 'answers.microsoft.com',
+            'forum.xda-developers.com', 'forums.docker.com',
+            'discuss.python.org', 'discuss.elastic.co',
+            'laracasts.com', 'dev.to', 'hashnode.com',
+        ],
+        'patterns': [
+            r'.*\.stackexchange\.com$',
+            r'forum\..*',
+            r'forums\..*',
+            r'community\..*',
+            r'discuss\..*',
+        ]
+    },
+    'docs': {
+        'name': 'Documentation Sites',
+        'domains': [
+            'docs.python.org', 'docs.oracle.com', 'docs.microsoft.com',
+            'developer.mozilla.org', 'w3schools.com', 'tutorialspoint.com',
+            'geeksforgeeks.org', 'javatpoint.com', 'programiz.com',
+            'learn.microsoft.com', 'cloud.google.com', 'aws.amazon.com',
+            'docs.aws.amazon.com', 'docs.docker.com', 'kubernetes.io',
+            'reactjs.org', 'vuejs.org', 'angular.io', 'nodejs.org',
+            'php.net', 'ruby-doc.org', 'cplusplus.com', 'cppreference.com',
+            'devdocs.io', 'readthedocs.io', 'readthedocs.org',
+            'medium.com', 'towardsdatascience.com', 'freecodecamp.org',
+        ],
+        'patterns': [
+            r'docs\..*',
+            r'.*\.readthedocs\.io$',
+            r'.*\.readthedocs\.org$',
+            r'wiki\..*',
+            r'.*-docs\..*',
+        ]
+    },
+    'social': {
+        'name': 'Social Media',
+        'domains': [
+            'twitter.com', 'x.com', 'facebook.com', 'instagram.com',
+            'linkedin.com', 'pinterest.com', 'tumblr.com', 'tiktok.com',
+            'youtube.com', 'youtu.be', 'vimeo.com', 'dailymotion.com',
+            'twitch.tv', 'discord.com', 'discord.gg', 'slack.com',
+            'telegram.org', 't.me', 'whatsapp.com', 'messenger.com',
+        ],
+        'patterns': []
+    },
+    'search_engines': {
+        'name': 'Search Engines',
+        'domains': [
+            'google.com', 'bing.com', 'yahoo.com', 'duckduckgo.com',
+            'baidu.com', 'yandex.com', 'ask.com', 'aol.com',
+            'webcache.googleusercontent.com', 'translate.google.com',
+            'search.yahoo.com', 'search.aol.com',
+        ],
+        'patterns': [
+            r'.*\.google\..*',
+            r'.*\.bing\..*',
+            r'search\..*',
+        ]
+    },
+    'cdn': {
+        'name': 'CDN & Static Assets',
+        'domains': [
+            'cloudflare.com', 'cdn.jsdelivr.net', 'unpkg.com',
+            'cdnjs.cloudflare.com', 'ajax.googleapis.com',
+            'fonts.googleapis.com', 'fonts.gstatic.com',
+            'maxcdn.bootstrapcdn.com', 'cdn.bootcss.com',
+            'staticfile.org', 's3.amazonaws.com', 'storage.googleapis.com',
+        ],
+        'patterns': [
+            r'cdn\..*',
+            r'.*\.cdn\..*',
+            r'static\..*',
+            r'assets\..*',
+        ]
+    },
+    'security': {
+        'name': 'Security & Scanner Sites',
+        'domains': [
+            'virustotal.com', 'shodan.io', 'censys.io', 'zoomeye.org',
+            'securitytrails.com', 'crt.sh', 'urlscan.io',
+            'exploit-db.com', 'cvedetails.com', 'nvd.nist.gov',
+            'vulners.com', 'snyk.io', 'hackerone.com', 'bugcrowd.com',
+        ],
+        'patterns': []
+    },
+    'pastebin': {
+        'name': 'Pastebin Sites',
+        'domains': [
+            'pastebin.com', 'paste.ee', 'hastebin.com', 'dpaste.org',
+            'ghostbin.com', 'justpaste.it', 'paste.mozilla.org',
+            'bpaste.net', 'sprunge.us', 'ix.io',
+        ],
+        'patterns': [
+            r'paste\..*',
+            r'.*paste.*\..*',
+        ]
+    }
+}
 
-def is_excluded_domain(url):
-    """Check if URL belongs to an excluded domain."""
+CUSTOM_EXCLUDED_DOMAINS = []
+CUSTOM_EXCLUDED_PATTERNS = []
+WHITELISTED_DOMAINS = []
+
+filter_stats = {
+    'total_checked': 0,
+    'total_filtered': 0,
+    'by_category': {},
+    'by_domain': {}
+}
+
+def reset_filter_stats():
+    """Reset filtering statistics."""
+    global filter_stats
+    filter_stats = {
+        'total_checked': 0,
+        'total_filtered': 0,
+        'by_category': {},
+        'by_domain': {}
+    }
+
+def load_filter_config(filepath='filter_config.json'):
+    """Load custom filter configuration from JSON file."""
+    global CUSTOM_EXCLUDED_DOMAINS, CUSTOM_EXCLUDED_PATTERNS, WHITELISTED_DOMAINS
+    try:
+        if os.path.exists(filepath):
+            with open(filepath, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                CUSTOM_EXCLUDED_DOMAINS = config.get('excluded_domains', [])
+                CUSTOM_EXCLUDED_PATTERNS = config.get('excluded_patterns', [])
+                WHITELISTED_DOMAINS = config.get('whitelisted_domains', [])
+                if config.get('categories'):
+                    settings['filter_categories'] = config['categories']
+                return True
+    except Exception as e:
+        print_warning(f"Could not load filter config: {str(e)}")
+    return False
+
+def save_filter_config(filepath='filter_config.json'):
+    """Save current filter configuration to JSON file."""
+    try:
+        config = {
+            'categories': settings['filter_categories'],
+            'excluded_domains': CUSTOM_EXCLUDED_DOMAINS,
+            'excluded_patterns': CUSTOM_EXCLUDED_PATTERNS,
+            'whitelisted_domains': WHITELISTED_DOMAINS
+        }
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=2)
+        return True
+    except Exception as e:
+        print_error(f"Could not save filter config: {str(e)}")
+        return False
+
+def get_all_excluded_domains():
+    """Get all domains to be excluded based on active categories."""
+    domains = set()
+    for category in settings['filter_categories']:
+        if category in DOMAIN_CATEGORIES:
+            domains.update(DOMAIN_CATEGORIES[category]['domains'])
+    domains.update(CUSTOM_EXCLUDED_DOMAINS)
+    return domains
+
+def get_all_excluded_patterns():
+    """Get all patterns to be excluded based on active categories."""
+    patterns = []
+    for category in settings['filter_categories']:
+        if category in DOMAIN_CATEGORIES:
+            patterns.extend(DOMAIN_CATEGORIES[category]['patterns'])
+    patterns.extend(CUSTOM_EXCLUDED_PATTERNS)
+    return patterns
+
+def is_whitelisted(url):
+    """Check if URL is in whitelist."""
     try:
         parsed = urllib.parse.urlparse(url)
         domain = parsed.netloc.lower()
-        for excluded in EXCLUDED_DOMAINS:
-            if domain == excluded or domain.endswith('.' + excluded):
+        for whitelisted in WHITELISTED_DOMAINS:
+            if domain == whitelisted or domain.endswith('.' + whitelisted):
                 return True
         return False
     except:
         return False
 
-def filter_urls(urls):
-    """Filter out URLs from excluded domains."""
-    filtered = [url for url in urls if not is_excluded_domain(url)]
-    excluded_count = len(urls) - len(filtered)
-    if excluded_count > 0:
-        print_warning(f"Filtered {excluded_count} URL dari domain yang di-exclude (stackoverflow/github/gitlab)")
+def get_domain_category(domain):
+    """Get the category of a domain."""
+    domain = domain.lower()
+    for category, data in DOMAIN_CATEGORIES.items():
+        if category not in settings['filter_categories']:
+            continue
+        for excl_domain in data['domains']:
+            if domain == excl_domain or domain.endswith('.' + excl_domain):
+                return category
+        for pattern in data['patterns']:
+            if re.match(pattern, domain, re.IGNORECASE):
+                return category
+    if domain in CUSTOM_EXCLUDED_DOMAINS:
+        return 'custom'
+    for pattern in CUSTOM_EXCLUDED_PATTERNS:
+        if re.match(pattern, domain, re.IGNORECASE):
+            return 'custom_pattern'
+    return None
+
+def is_excluded_domain(url):
+    """Check if URL belongs to an excluded domain (advanced version)."""
+    if not settings.get('filter_enabled', True):
+        return False, None
+    
+    try:
+        parsed = urllib.parse.urlparse(url)
+        domain = parsed.netloc.lower()
+        
+        if is_whitelisted(url):
+            return False, None
+        
+        excluded_domains = get_all_excluded_domains()
+        for excl_domain in excluded_domains:
+            if domain == excl_domain or domain.endswith('.' + excl_domain):
+                category = get_domain_category(domain)
+                return True, category
+        
+        excluded_patterns = get_all_excluded_patterns()
+        for pattern in excluded_patterns:
+            if re.match(pattern, domain, re.IGNORECASE):
+                category = get_domain_category(domain)
+                return True, category if category else 'pattern_match'
+        
+        return False, None
+    except:
+        return False, None
+
+def filter_urls(urls, verbose=True):
+    """Filter out URLs from excluded domains (advanced version with stats)."""
+    global filter_stats
+    
+    if not settings.get('filter_enabled', True):
+        return urls
+    
+    reset_filter_stats()
+    filtered = []
+    excluded_details = {}
+    
+    for url in urls:
+        filter_stats['total_checked'] += 1
+        is_excluded, category = is_excluded_domain(url)
+        
+        if is_excluded:
+            filter_stats['total_filtered'] += 1
+            
+            if category:
+                filter_stats['by_category'][category] = filter_stats['by_category'].get(category, 0) + 1
+            
+            try:
+                domain = urllib.parse.urlparse(url).netloc.lower()
+                filter_stats['by_domain'][domain] = filter_stats['by_domain'].get(domain, 0) + 1
+                if domain not in excluded_details:
+                    excluded_details[domain] = {'count': 0, 'category': category}
+                excluded_details[domain]['count'] += 1
+            except:
+                pass
+        else:
+            filtered.append(url)
+    
+    if verbose and filter_stats['total_filtered'] > 0:
+        print_filter_stats(excluded_details)
+    
     return filtered
+
+def print_filter_stats(excluded_details=None):
+    """Print detailed filtering statistics."""
+    if filter_stats['total_filtered'] == 0:
+        return
+    
+    print(f"""
+    {Fore.YELLOW}╔{'═'*66}╗
+    ║{Fore.WHITE}  URL FILTER RESULTS                                              {Fore.YELLOW}║
+    ╠{'═'*66}╣{Style.RESET_ALL}
+    {Fore.YELLOW}║{Fore.WHITE} Total Checked : {filter_stats['total_checked']:<50}{Fore.YELLOW}║
+    {Fore.YELLOW}║{Fore.WHITE} Total Filtered: {Fore.RED}{filter_stats['total_filtered']:<50}{Fore.YELLOW}║
+    {Fore.YELLOW}║{Fore.WHITE} Passed Through: {Fore.GREEN}{filter_stats['total_checked'] - filter_stats['total_filtered']:<50}{Fore.YELLOW}║
+    {Fore.YELLOW}╠{'═'*66}╣{Style.RESET_ALL}""")
+    
+    if filter_stats['by_category']:
+        print(f"    {Fore.YELLOW}║{Fore.CYAN} By Category:{' '*54}{Fore.YELLOW}║")
+        for category, count in sorted(filter_stats['by_category'].items(), key=lambda x: -x[1]):
+            cat_name = DOMAIN_CATEGORIES.get(category, {}).get('name', category.title())
+            print(f"    {Fore.YELLOW}║{Fore.WHITE}   • {cat_name}: {Fore.RED}{count:<43}{Fore.YELLOW}║")
+    
+    if excluded_details:
+        top_domains = sorted(excluded_details.items(), key=lambda x: -x[1]['count'])[:5]
+        if top_domains:
+            print(f"    {Fore.YELLOW}╠{'═'*66}╣{Style.RESET_ALL}")
+            print(f"    {Fore.YELLOW}║{Fore.CYAN} Top Filtered Domains:{' '*45}{Fore.YELLOW}║")
+            for domain, info in top_domains:
+                domain_display = domain[:40] if len(domain) > 40 else domain
+                print(f"    {Fore.YELLOW}║{Fore.WHITE}   • {domain_display}: {Fore.RED}{info['count']:<5}{Fore.YELLOW}║")
+    
+    print(f"    {Fore.YELLOW}╚{'═'*66}╝{Style.RESET_ALL}")
+
+def toggle_filter_category(category):
+    """Enable or disable a filter category."""
+    if category in settings['filter_categories']:
+        settings['filter_categories'].remove(category)
+        return False
+    else:
+        settings['filter_categories'].append(category)
+        return True
+
+def add_custom_exclusion(domain_or_pattern, is_pattern=False):
+    """Add a custom domain or pattern to exclusion list."""
+    if is_pattern:
+        if domain_or_pattern not in CUSTOM_EXCLUDED_PATTERNS:
+            CUSTOM_EXCLUDED_PATTERNS.append(domain_or_pattern)
+            return True
+    else:
+        if domain_or_pattern not in CUSTOM_EXCLUDED_DOMAINS:
+            CUSTOM_EXCLUDED_DOMAINS.append(domain_or_pattern)
+            return True
+    return False
+
+def add_whitelist(domain):
+    """Add a domain to whitelist."""
+    if domain not in WHITELISTED_DOMAINS:
+        WHITELISTED_DOMAINS.append(domain)
+        return True
+    return False
+
+def remove_whitelist(domain):
+    """Remove a domain from whitelist."""
+    if domain in WHITELISTED_DOMAINS:
+        WHITELISTED_DOMAINS.remove(domain)
+        return True
+    return False
+
+def show_filter_settings():
+    """Display current filter settings."""
+    print(f"""
+    {Fore.CYAN}╔{'═'*66}╗
+    ║{Fore.WHITE}  ADVANCED URL FILTER SETTINGS                                    {Fore.CYAN}║
+    ╠{'═'*66}╣{Style.RESET_ALL}
+    {Fore.CYAN}║{Fore.WHITE} Filter Status: {Fore.GREEN if settings['filter_enabled'] else Fore.RED}{'ENABLED' if settings['filter_enabled'] else 'DISABLED':<51}{Fore.CYAN}║
+    {Fore.CYAN}╠{'═'*66}╣{Style.RESET_ALL}
+    {Fore.CYAN}║{Fore.YELLOW} Active Categories:{' '*48}{Fore.CYAN}║""")
+    
+    for category, data in DOMAIN_CATEGORIES.items():
+        status = f"{Fore.GREEN}[ON]" if category in settings['filter_categories'] else f"{Fore.RED}[OFF]"
+        domain_count = len(data['domains'])
+        pattern_count = len(data['patterns'])
+        print(f"    {Fore.CYAN}║{Fore.WHITE}   {status}{Style.RESET_ALL} {data['name']}: {domain_count} domains, {pattern_count} patterns{' ' * (30 - len(data['name']))}{Fore.CYAN}║")
+    
+    print(f"    {Fore.CYAN}╠{'═'*66}╣{Style.RESET_ALL}")
+    print(f"    {Fore.CYAN}║{Fore.YELLOW} Custom Exclusions: {Fore.WHITE}{len(CUSTOM_EXCLUDED_DOMAINS)} domains, {len(CUSTOM_EXCLUDED_PATTERNS)} patterns{' '*25}{Fore.CYAN}║")
+    print(f"    {Fore.CYAN}║{Fore.YELLOW} Whitelisted: {Fore.WHITE}{len(WHITELISTED_DOMAINS)} domains{' '*44}{Fore.CYAN}║")
+    print(f"    {Fore.CYAN}╚{'═'*66}╝{Style.RESET_ALL}")
 
 all_vulnerabilities = []
 all_xss_vulnerabilities = []
@@ -1147,12 +1496,305 @@ def menu_view_results():
     input(f"\n    {Fore.CYAN}Tekan Enter untuk kembali ke menu...{Style.RESET_ALL}")
 
 
+def menu_filter_settings():
+    """Menu for advanced URL filter settings."""
+    while True:
+        clear_screen()
+        print_banner()
+        
+        filter_status = f"{Fore.GREEN}ENABLED" if settings['filter_enabled'] else f"{Fore.RED}DISABLED"
+        active_categories = len(settings['filter_categories'])
+        total_categories = len(DOMAIN_CATEGORIES)
+        
+        total_domains = sum(len(cat['domains']) for cat in DOMAIN_CATEGORIES.values())
+        total_patterns = sum(len(cat['patterns']) for cat in DOMAIN_CATEGORIES.values())
+        
+        print(f"""
+    {Fore.CYAN}╔════════════════════════════════════════════════════════════════════╗
+    ║  {Fore.YELLOW}◆  ADVANCED URL FILTER SETTINGS{Fore.CYAN}                                   ║
+    ╠════════════════════════════════════════════════════════════════════╣
+    ║                                                                    ║
+    ║  {Fore.WHITE}Filter Status: {filter_status}{' '*(51 - (7 if settings['filter_enabled'] else 8))}{Fore.CYAN}║
+    ║  {Fore.WHITE}Active Categories: {Fore.YELLOW}{active_categories}/{total_categories}{Fore.WHITE}   Total Domains: {Fore.YELLOW}{total_domains}{Fore.WHITE}   Patterns: {Fore.YELLOW}{total_patterns}{' '*5}{Fore.CYAN}║
+    ║                                                                    ║
+    ╠════════════════════════════════════════════════════════════════════╣
+    ║  {Fore.YELLOW}[1]{Fore.WHITE} Toggle Filter (ON/OFF)                                       {Fore.CYAN}║
+    ║  {Fore.YELLOW}[2]{Fore.WHITE} Manage Filter Categories                                     {Fore.CYAN}║
+    ║  {Fore.YELLOW}[3]{Fore.WHITE} Add Custom Domain/Pattern Exclusion                          {Fore.CYAN}║
+    ║  {Fore.YELLOW}[4]{Fore.WHITE} Manage Whitelist                                             {Fore.CYAN}║
+    ║  {Fore.YELLOW}[5]{Fore.WHITE} View Current Filter Settings                                 {Fore.CYAN}║
+    ║  {Fore.YELLOW}[6]{Fore.WHITE} Load Filter Config from File                                 {Fore.CYAN}║
+    ║  {Fore.YELLOW}[7]{Fore.WHITE} Save Filter Config to File                                   {Fore.CYAN}║
+    ║  {Fore.YELLOW}[8]{Fore.WHITE} Reset to Default Settings                                    {Fore.CYAN}║
+    ║                                                                    ║
+    ╠════════════════════════════════════════════════════════════════════╣
+    ║  {Fore.YELLOW}[0]{Fore.WHITE} Kembali                                                      {Fore.CYAN}║
+    ╚════════════════════════════════════════════════════════════════════╝
+{Style.RESET_ALL}""")
+        
+        choice = input(f"    {Fore.YELLOW}➤{Style.RESET_ALL} Pilih opsi: ").strip()
+        
+        if choice == '1':
+            settings['filter_enabled'] = not settings['filter_enabled']
+            status = "ENABLED" if settings['filter_enabled'] else "DISABLED"
+            print_success(f"URL Filter sekarang {status}")
+            time.sleep(1)
+        
+        elif choice == '2':
+            menu_filter_categories()
+        
+        elif choice == '3':
+            menu_add_custom_exclusion()
+        
+        elif choice == '4':
+            menu_manage_whitelist()
+        
+        elif choice == '5':
+            show_filter_settings()
+            input(f"\n    {Fore.CYAN}Tekan Enter untuk kembali...{Style.RESET_ALL}")
+        
+        elif choice == '6':
+            filepath = input(f"    {Fore.YELLOW}➤{Style.RESET_ALL} Path file config (default: filter_config.json): ").strip()
+            if not filepath:
+                filepath = 'filter_config.json'
+            if load_filter_config(filepath):
+                print_success(f"Filter config loaded dari {filepath}")
+            else:
+                print_error("Gagal memuat filter config")
+            time.sleep(1.5)
+        
+        elif choice == '7':
+            filepath = input(f"    {Fore.YELLOW}➤{Style.RESET_ALL} Path file config (default: filter_config.json): ").strip()
+            if not filepath:
+                filepath = 'filter_config.json'
+            if save_filter_config(filepath):
+                print_success(f"Filter config disimpan ke {filepath}")
+            else:
+                print_error("Gagal menyimpan filter config")
+            time.sleep(1.5)
+        
+        elif choice == '8':
+            settings['filter_categories'] = ['code_repos', 'forums', 'docs', 'social', 'search_engines', 'cdn']
+            CUSTOM_EXCLUDED_DOMAINS.clear()
+            CUSTOM_EXCLUDED_PATTERNS.clear()
+            WHITELISTED_DOMAINS.clear()
+            print_success("Filter settings direset ke default!")
+            time.sleep(1)
+        
+        elif choice == '0':
+            break
+
+
+def menu_filter_categories():
+    """Menu to manage filter categories."""
+    while True:
+        clear_screen()
+        print_banner()
+        
+        print(f"""
+    {Fore.CYAN}╔════════════════════════════════════════════════════════════════════╗
+    ║  {Fore.YELLOW}◆  MANAGE FILTER CATEGORIES{Fore.CYAN}                                       ║
+    ╠════════════════════════════════════════════════════════════════════╣
+    ║  {Fore.WHITE}Pilih kategori untuk toggle ON/OFF:{' '*32}{Fore.CYAN}║
+    ╠════════════════════════════════════════════════════════════════════╣""")
+        
+        categories = list(DOMAIN_CATEGORIES.keys())
+        for i, category in enumerate(categories, 1):
+            data = DOMAIN_CATEGORIES[category]
+            status = f"{Fore.GREEN}[ON] " if category in settings['filter_categories'] else f"{Fore.RED}[OFF]"
+            domain_count = len(data['domains'])
+            pattern_count = len(data['patterns'])
+            name = data['name'][:30]
+            print(f"    {Fore.CYAN}║  {Fore.YELLOW}[{i}]{Style.RESET_ALL} {status} {name:<30} ({domain_count} domains, {pattern_count} patterns){' '*(4)}{Fore.CYAN}║")
+        
+        print(f"""    {Fore.CYAN}╠════════════════════════════════════════════════════════════════════╣
+    ║  {Fore.YELLOW}[A]{Fore.WHITE} Aktifkan Semua                                              {Fore.CYAN}║
+    ║  {Fore.YELLOW}[N]{Fore.WHITE} Nonaktifkan Semua                                           {Fore.CYAN}║
+    ║  {Fore.YELLOW}[0]{Fore.WHITE} Kembali                                                     {Fore.CYAN}║
+    ╚════════════════════════════════════════════════════════════════════╝
+{Style.RESET_ALL}""")
+        
+        choice = input(f"    {Fore.YELLOW}➤{Style.RESET_ALL} Pilih opsi: ").strip().upper()
+        
+        if choice == '0':
+            break
+        elif choice == 'A':
+            settings['filter_categories'] = list(DOMAIN_CATEGORIES.keys())
+            print_success("Semua kategori diaktifkan!")
+            time.sleep(1)
+        elif choice == 'N':
+            settings['filter_categories'] = []
+            print_success("Semua kategori dinonaktifkan!")
+            time.sleep(1)
+        else:
+            try:
+                idx = int(choice) - 1
+                if 0 <= idx < len(categories):
+                    category = categories[idx]
+                    if toggle_filter_category(category):
+                        print_success(f"Kategori '{DOMAIN_CATEGORIES[category]['name']}' diaktifkan")
+                    else:
+                        print_warning(f"Kategori '{DOMAIN_CATEGORIES[category]['name']}' dinonaktifkan")
+                    time.sleep(0.5)
+            except ValueError:
+                pass
+
+
+def menu_add_custom_exclusion():
+    """Menu to add custom domain or pattern exclusion."""
+    clear_screen()
+    print_banner()
+    
+    print(f"""
+    {Fore.CYAN}╔════════════════════════════════════════════════════════════════════╗
+    ║  {Fore.YELLOW}◆  ADD CUSTOM EXCLUSION{Fore.CYAN}                                           ║
+    ╠════════════════════════════════════════════════════════════════════╣
+    ║                                                                    ║
+    ║  {Fore.YELLOW}[1]{Fore.WHITE} Tambah Domain (contoh: example.com)                         {Fore.CYAN}║
+    ║  {Fore.YELLOW}[2]{Fore.WHITE} Tambah Pattern Regex (contoh: .*\\.edu$)                     {Fore.CYAN}║
+    ║  {Fore.YELLOW}[3]{Fore.WHITE} Lihat Custom Exclusions                                     {Fore.CYAN}║
+    ║  {Fore.YELLOW}[4]{Fore.WHITE} Hapus Custom Exclusion                                      {Fore.CYAN}║
+    ║  {Fore.YELLOW}[0]{Fore.WHITE} Kembali                                                     {Fore.CYAN}║
+    ║                                                                    ║
+    ╚════════════════════════════════════════════════════════════════════╝
+{Style.RESET_ALL}""")
+    
+    choice = input(f"    {Fore.YELLOW}➤{Style.RESET_ALL} Pilih opsi: ").strip()
+    
+    if choice == '1':
+        domain = input(f"    {Fore.YELLOW}➤{Style.RESET_ALL} Masukkan domain: ").strip().lower()
+        if domain:
+            if add_custom_exclusion(domain, is_pattern=False):
+                print_success(f"Domain '{domain}' ditambahkan ke exclusion list")
+            else:
+                print_warning(f"Domain '{domain}' sudah ada di exclusion list")
+        time.sleep(1.5)
+    
+    elif choice == '2':
+        pattern = input(f"    {Fore.YELLOW}➤{Style.RESET_ALL} Masukkan regex pattern: ").strip()
+        if pattern:
+            try:
+                re.compile(pattern)
+                if add_custom_exclusion(pattern, is_pattern=True):
+                    print_success(f"Pattern '{pattern}' ditambahkan ke exclusion list")
+                else:
+                    print_warning(f"Pattern '{pattern}' sudah ada di exclusion list")
+            except re.error:
+                print_error("Pattern regex tidak valid!")
+        time.sleep(1.5)
+    
+    elif choice == '3':
+        print(f"\n    {Fore.CYAN}Custom Excluded Domains:{Style.RESET_ALL}")
+        if CUSTOM_EXCLUDED_DOMAINS:
+            for d in CUSTOM_EXCLUDED_DOMAINS:
+                print(f"      • {d}")
+        else:
+            print(f"      {Fore.WHITE}(kosong){Style.RESET_ALL}")
+        
+        print(f"\n    {Fore.CYAN}Custom Excluded Patterns:{Style.RESET_ALL}")
+        if CUSTOM_EXCLUDED_PATTERNS:
+            for p in CUSTOM_EXCLUDED_PATTERNS:
+                print(f"      • {p}")
+        else:
+            print(f"      {Fore.WHITE}(kosong){Style.RESET_ALL}")
+        
+        input(f"\n    {Fore.CYAN}Tekan Enter untuk kembali...{Style.RESET_ALL}")
+    
+    elif choice == '4':
+        print(f"\n    {Fore.CYAN}[1]{Style.RESET_ALL} Hapus domain")
+        print(f"    {Fore.CYAN}[2]{Style.RESET_ALL} Hapus pattern")
+        sub = input(f"    {Fore.YELLOW}➤{Style.RESET_ALL} Pilih: ").strip()
+        
+        if sub == '1' and CUSTOM_EXCLUDED_DOMAINS:
+            for i, d in enumerate(CUSTOM_EXCLUDED_DOMAINS, 1):
+                print(f"      [{i}] {d}")
+            try:
+                idx = int(input(f"    {Fore.YELLOW}➤{Style.RESET_ALL} Nomor domain: ")) - 1
+                if 0 <= idx < len(CUSTOM_EXCLUDED_DOMAINS):
+                    removed = CUSTOM_EXCLUDED_DOMAINS.pop(idx)
+                    print_success(f"Domain '{removed}' dihapus")
+            except (ValueError, IndexError):
+                print_error("Nomor tidak valid")
+        elif sub == '2' and CUSTOM_EXCLUDED_PATTERNS:
+            for i, p in enumerate(CUSTOM_EXCLUDED_PATTERNS, 1):
+                print(f"      [{i}] {p}")
+            try:
+                idx = int(input(f"    {Fore.YELLOW}➤{Style.RESET_ALL} Nomor pattern: ")) - 1
+                if 0 <= idx < len(CUSTOM_EXCLUDED_PATTERNS):
+                    removed = CUSTOM_EXCLUDED_PATTERNS.pop(idx)
+                    print_success(f"Pattern '{removed}' dihapus")
+            except (ValueError, IndexError):
+                print_error("Nomor tidak valid")
+        time.sleep(1.5)
+
+
+def menu_manage_whitelist():
+    """Menu to manage whitelisted domains."""
+    while True:
+        clear_screen()
+        print_banner()
+        
+        print(f"""
+    {Fore.CYAN}╔════════════════════════════════════════════════════════════════════╗
+    ║  {Fore.YELLOW}◆  MANAGE WHITELIST{Fore.CYAN}                                               ║
+    ╠════════════════════════════════════════════════════════════════════╣
+    ║  {Fore.WHITE}Domain di whitelist tidak akan di-filter meski masuk kategori{' '*4}{Fore.CYAN}║
+    ╠════════════════════════════════════════════════════════════════════╣
+    ║                                                                    ║
+    ║  {Fore.YELLOW}[1]{Fore.WHITE} Tambah Domain ke Whitelist                                  {Fore.CYAN}║
+    ║  {Fore.YELLOW}[2]{Fore.WHITE} Lihat Whitelist                                             {Fore.CYAN}║
+    ║  {Fore.YELLOW}[3]{Fore.WHITE} Hapus dari Whitelist                                        {Fore.CYAN}║
+    ║  {Fore.YELLOW}[0]{Fore.WHITE} Kembali                                                     {Fore.CYAN}║
+    ║                                                                    ║
+    ╚════════════════════════════════════════════════════════════════════╝
+{Style.RESET_ALL}""")
+        
+        choice = input(f"    {Fore.YELLOW}➤{Style.RESET_ALL} Pilih opsi: ").strip()
+        
+        if choice == '1':
+            domain = input(f"    {Fore.YELLOW}➤{Style.RESET_ALL} Masukkan domain: ").strip().lower()
+            if domain:
+                if add_whitelist(domain):
+                    print_success(f"Domain '{domain}' ditambahkan ke whitelist")
+                else:
+                    print_warning(f"Domain '{domain}' sudah ada di whitelist")
+            time.sleep(1.5)
+        
+        elif choice == '2':
+            print(f"\n    {Fore.CYAN}Whitelisted Domains:{Style.RESET_ALL}")
+            if WHITELISTED_DOMAINS:
+                for d in WHITELISTED_DOMAINS:
+                    print(f"      • {d}")
+            else:
+                print(f"      {Fore.WHITE}(kosong){Style.RESET_ALL}")
+            input(f"\n    {Fore.CYAN}Tekan Enter untuk kembali...{Style.RESET_ALL}")
+        
+        elif choice == '3':
+            if WHITELISTED_DOMAINS:
+                for i, d in enumerate(WHITELISTED_DOMAINS, 1):
+                    print(f"      [{i}] {d}")
+                try:
+                    idx = int(input(f"    {Fore.YELLOW}➤{Style.RESET_ALL} Nomor domain: ")) - 1
+                    if 0 <= idx < len(WHITELISTED_DOMAINS):
+                        removed = WHITELISTED_DOMAINS.pop(idx)
+                        print_success(f"Domain '{removed}' dihapus dari whitelist")
+                except (ValueError, IndexError):
+                    print_error("Nomor tidak valid")
+            else:
+                print_warning("Whitelist kosong")
+            time.sleep(1.5)
+        
+        elif choice == '0':
+            break
+
+
 def menu_settings():
     while True:
         clear_screen()
         print_banner()
         
         api_status = f"{Fore.GREEN}Active"
+        filter_status = f"{Fore.GREEN}ON" if settings['filter_enabled'] else f"{Fore.RED}OFF"
         
         print(f"""
     {Fore.CYAN}┌────────────────────────────────────────────────────────────────────┐
@@ -1162,6 +1804,7 @@ def menu_settings():
     │  {Fore.YELLOW}[1]{Fore.WHITE} Jumlah Hasil Pencarian  : {Fore.GREEN}{settings['num_results']:<35}{Fore.CYAN} │
     │  {Fore.YELLOW}[2]{Fore.WHITE} Request Timeout (detik) : {Fore.GREEN}{settings['timeout']:<35}{Fore.CYAN} │
     │  {Fore.YELLOW}[3]{Fore.WHITE} Jumlah Thread           : {Fore.GREEN}{settings['threads']:<35}{Fore.CYAN} │
+    │  {Fore.YELLOW}[4]{Fore.WHITE} Advanced URL Filter     : {filter_status:<43}{Fore.CYAN} │
     │                                                                    │
     ├────────────────────────────────────────────────────────────────────┤
     │  {Fore.MAGENTA}ScraperAPI Status: {api_status}{' '*40}{Fore.CYAN} │
@@ -1207,6 +1850,9 @@ def menu_settings():
             except ValueError:
                 print_error("Masukkan angka yang valid!")
             time.sleep(1)
+        
+        elif choice == '4':
+            menu_filter_settings()
         
         elif choice == '0':
             break
@@ -1453,7 +2099,42 @@ Examples:
     parser.add_argument('--timeout', type=int, default=10, help='Request timeout in seconds (default: 10)')
     parser.add_argument('-r', '--results', type=int, default=100, help='Max results from dork (default: 100)')
     
+    filter_group = parser.add_argument_group('URL Filter Options')
+    filter_group.add_argument('--no-filter', action='store_true', help='Disable URL filtering')
+    filter_group.add_argument('--filter-config', help='Load filter config from JSON file')
+    filter_group.add_argument('--exclude-category', action='append', dest='exclude_cats', metavar='CAT',
+                              help='Exclude filter category (code_repos, forums, docs, social, search_engines, cdn, security, pastebin)')
+    filter_group.add_argument('--only-category', action='append', dest='only_cats', metavar='CAT',
+                              help='Use only specific filter categories')
+    filter_group.add_argument('--whitelist', action='append', dest='whitelist_domains',
+                              help='Add domain to whitelist (will not be filtered)')
+    filter_group.add_argument('--exclude-domain', action='append', dest='exclude_domains',
+                              help='Add domain to exclusion list')
+    filter_group.add_argument('--show-filter-stats', action='store_true', help='Show detailed filter statistics')
+    
     args = parser.parse_args()
+    
+    if args.no_filter:
+        settings['filter_enabled'] = False
+    
+    if args.filter_config:
+        load_filter_config(args.filter_config)
+    
+    if args.exclude_cats:
+        for cat in args.exclude_cats:
+            if cat in settings['filter_categories']:
+                settings['filter_categories'].remove(cat)
+    
+    if args.only_cats:
+        settings['filter_categories'] = [cat for cat in args.only_cats if cat in DOMAIN_CATEGORIES]
+    
+    if args.whitelist_domains:
+        for domain in args.whitelist_domains:
+            add_whitelist(domain.lower())
+    
+    if args.exclude_domains:
+        for domain in args.exclude_domains:
+            add_custom_exclusion(domain.lower(), is_pattern=False)
     
     import urllib3
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)

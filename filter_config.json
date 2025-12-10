@@ -1,0 +1,13 @@
+{
+  "categories": [
+    "code_repos",
+    "forums",
+    "docs",
+    "social",
+    "search_engines",
+    "cdn"
+  ],
+  "excluded_domains": [],
+  "excluded_patterns": [],
+  "whitelisted_domains": []
+}
