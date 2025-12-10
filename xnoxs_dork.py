@@ -1890,7 +1890,7 @@ def multi_threaded_scan(urls, timeout=10, num_threads=5):
 
 def search_dork(dork, num_results=100, engine="google"):
     try:
-        urls = []
+        unique_urls = set()
         results_per_page = 10
         total_pages = (num_results + results_per_page - 1) // results_per_page
         
@@ -1908,36 +1908,57 @@ def search_dork(dork, num_results=100, engine="google"):
             print_error(f"Mesin pencari tidak dikenal: {engine}")
             return []
         
+        no_new_results_count = 0
+        
         for page in range(1, total_pages + 1):
             loading_animation(f"Mencari di {engine_name}... (Halaman {page}/{total_pages})", 1)
             try:
                 results = search.search(dork, num_results=results_per_page, page=page)
                 
+                urls_before = len(unique_urls)
+                
                 for result in results:
+                    url = None
                     if hasattr(result, 'url'):
-                        urls.append(result.url)
+                        url = result.url
                     elif isinstance(result, dict) and 'url' in result:
-                        urls.append(result['url'])
+                        url = result['url']
                     elif isinstance(result, str):
-                        urls.append(result)
+                        url = result
+                    
+                    if url:
+                        unique_urls.add(url)
                 
-                print_info(f"Halaman {page}: Ditemukan {Fore.YELLOW}{len(results)}{Style.RESET_ALL} URL")
+                new_urls = len(unique_urls) - urls_before
                 
-                if len(urls) >= num_results:
+                if new_urls > 0:
+                    print_info(f"Halaman {page}: +{Fore.GREEN}{new_urls}{Style.RESET_ALL} URL baru (Total: {Fore.YELLOW}{len(unique_urls)}{Style.RESET_ALL})")
+                    no_new_results_count = 0
+                else:
+                    print_warning(f"Halaman {page}: Tidak ada URL baru (Total: {len(unique_urls)})")
+                    no_new_results_count += 1
+                
+                if len(unique_urls) >= num_results:
+                    print_success(f"Target {num_results} URL tercapai!")
+                    break
+                
+                if no_new_results_count >= 3:
+                    print_warning(f"3 halaman berturut-turut tanpa hasil baru, menghentikan pencarian...")
                     break
                     
                 if len(results) < results_per_page:
+                    print_info(f"Hasil pencarian habis di halaman {page}")
                     break
                     
             except Exception as e:
                 print_warning(f"Halaman {page} error: {str(e)}")
                 continue
         
-        urls = list(dict.fromkeys(urls))
+        urls = list(unique_urls)
         urls = filter_urls(urls)
         urls = urls[:num_results]
         
-        print_success(f"Total ditemukan {Fore.YELLOW}{len(urls)}{Style.RESET_ALL} URL unik")
+        print_success(f"Total ditemukan {Fore.YELLOW}{len(urls)}{Style.RESET_ALL} URL unik setelah filter")
         return urls
     except Exception as e:
         print_error(f"Search error: {str(e)}")
